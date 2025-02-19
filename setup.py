@@ -20,7 +20,7 @@ try:
 except ModuleNotFoundError:
     print(f'PyTorch is not installed. {msg_install_pytorch}')
 
-with open('auto_LiRPA/__init__.py') as file:
+with open('auto_LiRPA/__init__.py', encoding = "utf-8") as file:
     for line in file.readlines():
         if '__version__' in line:
             version = eval(line.strip().split()[-1])
