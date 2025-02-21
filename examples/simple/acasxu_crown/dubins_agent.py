@@ -92,7 +92,7 @@ class CarAgent(BaseAgent):
         delta, a = u
         x_dot = v * np.cos(theta + delta)
         y_dot = v * np.sin(theta + delta)
-        theta_dot = v / 1.75 * np.sin(delta)
+        theta_dot = v / 100 * np.sin(delta)
         v_dot = a
         return [x_dot, y_dot, theta_dot, v_dot]
 
@@ -122,6 +122,7 @@ class CarAgent(BaseAgent):
 
         # steering = np.clip(steering, -0.61, 0.61)
         deg_to_rad = np.pi/180
+        steering = 0
         if vehicle_mode == "COC":
             steering = 0 # in radians
         elif vehicle_mode == "WL":
