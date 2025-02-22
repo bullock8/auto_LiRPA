@@ -14,8 +14,6 @@ import numpy as np
 import torch
 from collections import deque
 from torch import nn
-from auto_LiRPA import BoundedModule, BoundedTensor
-from auto_LiRPA.perturbations import PerturbationLpNorm
 
 class AgentMode(Enum):
     COC = auto()
@@ -34,13 +32,13 @@ class TrackMode(Enum):
     M10 = auto()
 
 class Model(nn.Module):
-    def __init__(self, net: int = 0, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
     
-    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def forward(self, x, y):
         res = get_acas_state_torch(x,y)
-        res = self.model(res)
+        res = self.model(x)
         return res
 
 def get_acas_state(own_state: np.ndarray, int_state: np.ndarray) -> torch.Tensor:
@@ -49,25 +47,17 @@ def get_acas_state(own_state: np.ndarray, int_state: np.ndarray) -> torch.Tensor
     psi = wrap_to_pi(int_state[2]-own_state[2])
     return torch.tensor([dist, theta, psi, own_state[3], int_state[3]])
 
-def wtp(x: float): 
-    return torch.remainder((x + torch.pi), (2 * torch.pi)) - torch.pi
-
 def get_acas_state_torch(own_state: torch.Tensor, int_state: torch.Tensor) -> torch.Tensor:
-    dist = torch.sqrt((own_state[:,0:1]-int_state[:,0:1])**2+(own_state[:,1:2]-int_state[:,1:2])**2)
-    theta = wtp((2*torch.pi-own_state[:,2:3])+torch.arctan2(int_state[:,1:2], int_state[:,0:1]))
-    # theta = wtp((2*torch.pi-own_state[:,2:3])+torch.arctan(int_state[:,1:2]/int_state[:,0:1]))
-    psi = wtp(int_state[:,2:3]-own_state[:,2:3])
-    # return torch.cat([dist, own_state[:,3:4], psi, own_state[:,3:4], int_state[:,3:4]], dim=1)
-    return torch.cat([dist, theta, psi, own_state[:,3:4], int_state[:,3:4]], dim=1)
+    def wtp(x: float): 
+        return torch.remainder((x + torch.pi), (2 * torch.pi)) - torch.pi
+    dist = torch.sqrt((own_state[0]-int_state[0])**2+(own_state[1]-int_state[1])**2)
+    theta = wtp((2*torch.pi-own_state[2])+torch.arctan2(int_state[1], int_state[0]))
+    psi = wtp(int_state[2]-own_state[2])
+    return torch.tensor([dist, theta, psi, own_state[3], int_state[3]])
 
 def get_final_states_sim(n) -> Tuple[List]: 
     own_state = n.trace['car1'][-1]
     int_state = n.trace['car2'][-1]
-    return own_state, int_state
-
-def get_final_states_verify(n) -> Tuple[List]: 
-    own_state = n.trace['car1'][-2:]
-    int_state = n.trace['car2'][-2:]
     return own_state, int_state
 
 if __name__ == "__main__":
@@ -94,39 +84,18 @@ if __name__ == "__main__":
     scenario.config.print_level = 0
     scenario.add_agent(car)
     scenario.add_agent(car2)
-    # trace = scenario.simulate(Tv, ts) # this is the root
-    trace = scenario.verify(Tv, ts) # this is the root
+    trace = scenario.simulate(Tv, ts) # this is the root
     id = 1+trace.root.id
     net = 0 # eventually this could be modified in the loop by some cmd_list var
-    # model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
-    model = Model()
-    norm = float("inf")
-
-
+    model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
     queue = deque()
     queue.append(trace.root) # queue should only contain ATNs  
     ### begin looping
     while len(queue):
         cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
-        # own_state, int_state = get_final_states_sim(cur_node)
-        own_state, int_state = get_final_states_verify(cur_node)
-        # acas_state = get_acas_state(own_state[1:], int_state[1:]).float()
-        # ads = model(acas_state.view(1,5)).detach().numpy()
-        x_l, x_u = torch.tensor(own_state[0]).float().view(1,5), torch.tensor(own_state[1]).float().view(1,5)
-        x = (x_l+x_u)/2
-        y_l, y_u = torch.tensor(int_state[0]).float().view(1,5), torch.tensor(int_state[1]).float().view(1,5)
-        y = (y_l+y_u)/2
-        lirpa_model = BoundedModule(model, (torch.empty_like(x), torch.empty_like(y)))
-        ptb_x = PerturbationLpNorm(norm = norm, x_L=x_l, x_U=x_u)
-        ptb_y = PerturbationLpNorm(norm = norm, x_L=y_l, x_U=y_u)
-        bounded_x = BoundedTensor(x, ptb=ptb_x)
-        bounded_y = BoundedTensor(y, ptb=ptb_y)
-        lb, ub = lirpa_model.compute_bounds((bounded_x,bounded_y), method='alpha-CROWN')
-
-        print(lb, ub)
-        exit()
-        ads = model(torch.tensor(own_state[1:]).float(), torch.tensor(int_state[1:]).float()).detach().numpy()
-
+        own_state, int_state = get_final_states_sim(cur_node)
+        acas_state = get_acas_state(own_state[1:], int_state[1:]).float()
+        ads = model(acas_state.view(1,5)).detach().numpy()
         print(ads)
         new_mode = np.argmax(ads[0])+1 # will eventually be a list
         print(AgentMode(new_mode))
