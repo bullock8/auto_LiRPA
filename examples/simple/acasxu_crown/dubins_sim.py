@@ -79,7 +79,7 @@ if __name__ == "__main__":
     )
     T = 20
     Tv = 0.1
-    ts = 0.05
+    ts = 0.01
 
     scenario.config.print_level = 0
     scenario.add_agent(car)
@@ -98,7 +98,10 @@ if __name__ == "__main__":
         ads = model(acas_state.view(1,5)).detach().numpy()
         print(ads)
         new_mode = np.argmax(ads[0])+1 # will eventually be a list
-        print(AgentMode(new_mode))
+        # print(AgentMode(new_mode))
+        # if AgentMode(new_mode)==AgentMode.WL:
+        #     print(cur_node.start_time)
+        #     exit()
         # this will eventually be a loop
         scenario.set_init(
             [[own_state[1:], own_state[1:]], [int_state[1:], int_state[1:]]], # this should eventually be a range 

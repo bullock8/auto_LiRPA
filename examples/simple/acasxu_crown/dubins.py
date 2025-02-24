@@ -123,8 +123,8 @@ def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> tuple[torch.Tens
             arho_min = min(arho_min, arho)
 
     # there may be some weird bounds due to wrapping
-    theta_min = wrap_to_pi((2*np.pi-own_set[0][2])+arho_min)
-    theta_max = wrap_to_pi((2*np.pi-own_set[1][2])+arho_max)
+    theta_min = wrap_to_pi((2*np.pi-own_set[1][2])+arho_min)
+    theta_max = wrap_to_pi((2*np.pi-own_set[0][2])+arho_max)
 
     psi_min = wrap_to_pi(own_set[0][2]-int_set[1][2])
     psi_max = wrap_to_pi(own_set[1][2]-int_set[0][2])
@@ -172,9 +172,10 @@ if __name__ == "__main__":
     )
     T = 20
     Tv = 0.1
-    ts = 0.05
+    ts = 0.01
 
     scenario.config.print_level = 0
+    scenario.config.reachability_method = ReachabilityMethod.DRYVR_DISC
     scenario.add_agent(car)
     scenario.add_agent(car2)
     # trace = scenario.simulate(Tv, ts) # this is the root
@@ -193,6 +194,8 @@ if __name__ == "__main__":
         # own_state, int_state = get_final_states_sim(cur_node)
         own_state, int_state = get_final_states_verify(cur_node)
         acas_min, acas_max = get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:])
+        # print(acas_min, '\n', acas_max)
+
         # print(own_state, int_state, acas_min, acas_max)
 
         # ads = model(acas_state.view(1,5)).detach().numpy()
@@ -202,6 +205,13 @@ if __name__ == "__main__":
         ptb_x = PerturbationLpNorm(norm = norm, x_L=x_l, x_U=x_u)
         bounded_x = BoundedTensor(x, ptb=ptb_x)
         lb, ub = lirpa_model.compute_bounds(bounded_x, method='alpha-CROWN')
+
+        # if cur_node.start_time == 8.9:
+        #     print('At transition')
+        #     print(lb,ub)
+        #     print(own_state, int_state)
+        #     print(acas_min, acas_max)
+        #     exit()
 
         new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
         # this will eventually be a loop
