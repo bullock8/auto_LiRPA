@@ -33,21 +33,104 @@ class TrackMode(Enum):
     M21 = auto()
     M10 = auto()
 
-class Model(nn.Module):
-    def __init__(self, net: int = 0, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
+# class Model(nn.Module):
+#     def __init__(self, net: int = 0, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
     
-    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        res = get_acas_state_torch(x,y)
-        res = self.model(res)
-        return res
+#     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+#         res = get_acas_state_torch(x,y)
+#         res = self.model(res)
+#         return res
 
 def get_acas_state(own_state: np.ndarray, int_state: np.ndarray) -> torch.Tensor:
     dist = np.sqrt((own_state[0]-int_state[0])**2+(own_state[1]-int_state[1])**2)
-    theta = wrap_to_pi((2*np.pi-own_state[2])+np.arctan2(int_state[1], int_state[0]))
+    theta = wrap_to_pi((2*np.pi-own_state[2])+np.arctan2(int_state[1]-own_state[1], int_state[0]-own_state[0]))
     psi = wrap_to_pi(int_state[2]-own_state[2])
     return torch.tensor([dist, theta, psi, own_state[3], int_state[3]])
+
+### expects some 2x5 lists for both sets
+def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> tuple[torch.Tensor]: 
+    def dist(pnt1, pnt2):
+        return np.linalg.norm(
+            np.array(pnt1) - np.array(pnt2)
+        )
+
+    def get_extreme(rect1, rect2):
+        lb11 = rect1[0]
+        lb12 = rect1[1]
+        ub11 = rect1[2]
+        ub12 = rect1[3]
+
+        lb21 = rect2[0]
+        lb22 = rect2[1]
+        ub21 = rect2[2]
+        ub22 = rect2[3]
+
+        # Using rect 2 as reference
+        left = lb21 > ub11 
+        right = ub21 < lb11 
+        bottom = lb22 > ub12
+        top = ub22 < lb12
+
+        if top and left: 
+            dist_min = dist((ub11, lb12),(lb21, ub22))
+            dist_max = dist((lb11, ub12),(ub21, lb22))
+        elif bottom and left:
+            dist_min = dist((ub11, ub12),(lb21, lb22))
+            dist_max = dist((lb11, lb12),(ub21, ub22))
+        elif top and right:
+            dist_min = dist((lb11, lb12), (ub21, ub22))
+            dist_max = dist((ub11, ub12), (lb21, lb22))
+        elif bottom and right:
+            dist_min = dist((lb11, ub12),(ub21, lb22))
+            dist_max = dist((ub11, lb12),(lb21, ub22))
+        elif left:
+            dist_min = lb21 - ub11 
+            dist_max = np.sqrt((lb21 - ub11)**2 + max((ub22-lb12)**2, (ub12-lb22)**2))
+        elif right: 
+            dist_min = lb11 - ub21 
+            dist_max = np.sqrt((lb21 - ub11)**2 + max((ub22-lb12)**2, (ub12-lb22)**2))
+        elif top: 
+            dist_min = lb12 - ub22
+            dist_max = np.sqrt((ub12 - lb22)**2 + max((ub21-lb11)**2, (ub11-lb21)**2))
+        elif bottom: 
+            dist_min = lb22 - ub12 
+            dist_max = np.sqrt((ub22 - lb12)**2 + max((ub21-lb11)**2, (ub11-lb21)**2)) 
+        else: 
+            dist_min = 0 
+            dist_max = max(
+                dist((lb11, lb12), (ub21, ub22)),
+                dist((lb11, ub12), (ub21, lb22)),
+                dist((ub11, lb12), (lb21, ub12)),
+                dist((ub11, ub12), (lb21, lb22))
+            )
+        return dist_min, dist_max
+
+    own_rect = [own_set[i//2][i%2] for i in range(4)]
+    int_rect = [int_set[i//2][i%2] for i in range(4)]
+    d_min, d_max = get_extreme(own_rect, int_rect)
+
+    own_ext = [(own_set[i%2][0], own_set[i//2][1]) for i in range(4)] # will get ll, lr, ul, ur in order
+    int_ext = [(int_set[i%2][0], int_set[i//2][1]) for i in range(4)] 
+
+    arho_min = np.pi # does this make sense
+    arho_max = -np.pi
+    for own_vert in own_ext:
+        for int_vert in int_ext:
+            arho = np.arctan2(int_vert[1]-own_vert[1],int_vert[0]-own_vert[0]) 
+            arho_max = max(arho_max, arho)
+            arho_min = min(arho_min, arho)
+
+    # there may be some weird bounds due to wrapping
+    theta_min = wrap_to_pi((2*np.pi-own_set[0][2])+arho_min)
+    theta_max = wrap_to_pi((2*np.pi-own_set[1][2])+arho_max)
+
+    psi_min = wrap_to_pi(own_set[0][2]-int_set[1][2])
+    psi_max = wrap_to_pi(own_set[1][2]-int_set[0][2])
+    
+    return (torch.tensor([d_min, theta_min, psi_min, own_set[0][3], 
+                          int_set[0][3]]), torch.tensor([d_max, theta_max, psi_max, own_set[1][3], int_set[1][3]]))
 
 def wtp(x: float): 
     return torch.remainder((x + torch.pi), (2 * torch.pi)) - torch.pi
@@ -98,8 +181,7 @@ if __name__ == "__main__":
     trace = scenario.verify(Tv, ts) # this is the root
     id = 1+trace.root.id
     net = 0 # eventually this could be modified in the loop by some cmd_list var
-    # model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
-    model = Model()
+    model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
     norm = float("inf")
 
 
@@ -110,33 +192,26 @@ if __name__ == "__main__":
         cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
         # own_state, int_state = get_final_states_sim(cur_node)
         own_state, int_state = get_final_states_verify(cur_node)
-        # acas_state = get_acas_state(own_state[1:], int_state[1:]).float()
+        acas_min, acas_max = get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:])
+        # print(own_state, int_state, acas_min, acas_max)
+
         # ads = model(acas_state.view(1,5)).detach().numpy()
-        x_l, x_u = torch.tensor(own_state[0]).float().view(1,5), torch.tensor(own_state[1]).float().view(1,5)
+        x_l, x_u = torch.tensor(acas_min).float().view(1,5), torch.tensor(acas_max).float().view(1,5)
         x = (x_l+x_u)/2
-        y_l, y_u = torch.tensor(int_state[0]).float().view(1,5), torch.tensor(int_state[1]).float().view(1,5)
-        y = (y_l+y_u)/2
-        lirpa_model = BoundedModule(model, (torch.empty_like(x), torch.empty_like(y)))
+        lirpa_model = BoundedModule(model, (torch.empty_like(x)))
         ptb_x = PerturbationLpNorm(norm = norm, x_L=x_l, x_U=x_u)
-        ptb_y = PerturbationLpNorm(norm = norm, x_L=y_l, x_U=y_u)
         bounded_x = BoundedTensor(x, ptb=ptb_x)
-        bounded_y = BoundedTensor(y, ptb=ptb_y)
-        lb, ub = lirpa_model.compute_bounds((bounded_x,bounded_y), method='alpha-CROWN')
+        lb, ub = lirpa_model.compute_bounds(bounded_x, method='alpha-CROWN')
 
-        print(lb, ub)
-        exit()
-        ads = model(torch.tensor(own_state[1:]).float(), torch.tensor(int_state[1:]).float()).detach().numpy()
-
-        print(ads)
-        new_mode = np.argmax(ads[0])+1 # will eventually be a list
-        print(AgentMode(new_mode))
+        new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
         # this will eventually be a loop
         scenario.set_init(
-            [[own_state[1:], own_state[1:]], [int_state[1:], int_state[1:]]], # this should eventually be a range 
+            [[own_state[0][1:], own_state[1][1:]], [int_state[0][1:], int_state[0][1:]]], # this should eventually be a range 
             [(AgentMode(new_mode), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
         )
         id += 1
-        new_trace = scenario.simulate(Tv, ts)
+        # new_trace = scenario.simulate(Tv, ts)
+        new_trace = scenario.verify(Tv, ts)
         temp_root = new_trace.root
         new_node = cur_node.new_child(temp_root.init, temp_root.mode, temp_root.trace, cur_node.start_time + Tv, id)
         cur_node.child.append(new_node)
@@ -146,7 +221,8 @@ if __name__ == "__main__":
 
     trace.nodes = trace._get_all_nodes(trace.root)
     fig = go.Figure()
-    fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
+    # fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
+    fig = reachtube_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
     fig.show()
     # trace = scenario.verify(0.2,0.1) # increasing ts to 0.1 to increase learning speed, do the same for dryvr2
     # fig = reachtube_tree(trace) 

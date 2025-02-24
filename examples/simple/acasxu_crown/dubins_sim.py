@@ -43,7 +43,7 @@ class Model(nn.Module):
 
 def get_acas_state(own_state: np.ndarray, int_state: np.ndarray) -> torch.Tensor:
     dist = np.sqrt((own_state[0]-int_state[0])**2+(own_state[1]-int_state[1])**2)
-    theta = wrap_to_pi((2*np.pi-own_state[2])+np.arctan2(int_state[1], int_state[0]))
+    theta = wrap_to_pi((2*np.pi-own_state[2])+np.arctan2(int_state[1]-own_state[1], int_state[0]-own_state[0]))
     psi = wrap_to_pi(int_state[2]-own_state[2])
     return torch.tensor([dist, theta, psi, own_state[3], int_state[3]])
 
