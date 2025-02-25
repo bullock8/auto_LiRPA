@@ -118,11 +118,15 @@ def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> tuple[torch.Tens
     arho_max = -np.pi
     for own_vert in own_ext:
         for int_vert in int_ext:
-            arho = np.arctan2(int_vert[1]-own_vert[1],int_vert[0]-own_vert[0]) 
+            arho = np.arctan2(int_vert[1]-own_vert[1],int_vert[0]-own_vert[0]) % 2*np.pi
             arho_max = max(arho_max, arho)
             arho_min = min(arho_min, arho)
 
     # there may be some weird bounds due to wrapping
+    # for now, can just add 2pi to theta_max, psi_max if either are less than their resp mins
+    # in the future, need to partition reach into multiple theta_bounds if theta_max<theta_min
+    # for example, given t_min, t_max = pi-1, pi+1, instead of wrapping, need to have two bounds
+    # [pi-1,pi] and [-pi, -pi+1] -- would need to do this for psi as well
     theta_min = wrap_to_pi((2*np.pi-own_set[1][2])+arho_min)
     theta_max = wrap_to_pi((2*np.pi-own_set[0][2])+arho_max)
 
@@ -162,7 +166,8 @@ if __name__ == "__main__":
     scenario = Scenario(ScenarioConfig(parallel=False))
     car.set_initial(
         # initial_state=[[0, -0.5, 0, 1.0], [0.01, 0.5, 0, 1.0]],
-        initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
+        # initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
+        initial_state=[[0, -1001, np.pi/3, 100], [0, -999, np.pi/3, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
@@ -173,6 +178,7 @@ if __name__ == "__main__":
     T = 20
     Tv = 0.1
     ts = 0.01
+    # observation: for Tv = 0.1 and a larger initial set of radius 10 in y dim, the number of 
 
     scenario.config.print_level = 0
     scenario.config.reachability_method = ReachabilityMethod.DRYVR_DISC
@@ -183,22 +189,16 @@ if __name__ == "__main__":
     id = 1+trace.root.id
     net = 0 # eventually this could be modified in the loop by some cmd_list var
     model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
+    # models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
     norm = float("inf")
-
 
     queue = deque()
     queue.append(trace.root) # queue should only contain ATNs  
     ### begin looping
     while len(queue):
         cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
-        # own_state, int_state = get_final_states_sim(cur_node)
         own_state, int_state = get_final_states_verify(cur_node)
         acas_min, acas_max = get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:])
-        # print(acas_min, '\n', acas_max)
-
-        # print(own_state, int_state, acas_min, acas_max)
-
-        # ads = model(acas_state.view(1,5)).detach().numpy()
         x_l, x_u = torch.tensor(acas_min).float().view(1,5), torch.tensor(acas_max).float().view(1,5)
         x = (x_l+x_u)/2
         lirpa_model = BoundedModule(model, (torch.empty_like(x)))
@@ -206,30 +206,32 @@ if __name__ == "__main__":
         bounded_x = BoundedTensor(x, ptb=ptb_x)
         lb, ub = lirpa_model.compute_bounds(bounded_x, method='alpha-CROWN')
 
-        # if cur_node.start_time == 8.9:
-        #     print('At transition')
-        #     print(lb,ub)
-        #     print(own_state, int_state)
-        #     print(acas_min, acas_max)
-        #     exit()
-
         new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
-        # this will eventually be a loop
-        scenario.set_init(
-            [[own_state[0][1:], own_state[1][1:]], [int_state[0][1:], int_state[0][1:]]], # this should eventually be a range 
-            [(AgentMode(new_mode), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
-        )
-        id += 1
-        # new_trace = scenario.simulate(Tv, ts)
-        new_trace = scenario.verify(Tv, ts)
-        temp_root = new_trace.root
-        new_node = cur_node.new_child(temp_root.init, temp_root.mode, temp_root.trace, cur_node.start_time + Tv, id)
-        cur_node.child.append(new_node)
-        if new_node.start_time + Tv>=T: # if the time of the current simulation + start_time is at or above total time, don't add
-            continue
-        queue.append(new_node)
+        new_modes = []
+        for i in range(len(ub.numpy()[0])):
+            upper = ub.numpy()[0][i]
+            if upper>=lb.numpy()[0][new_mode-1]:
+                new_modes.append(i+1)
+        
+        for new_m in new_modes:
+            scenario.set_init(
+                [[own_state[0][1:], own_state[1][1:]], [int_state[0][1:], int_state[0][1:]]], # this should eventually be a range 
+                [(AgentMode(new_m), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
+            )
+            id += 1
+            # new_trace = scenario.simulate(Tv, ts)
+            new_trace = scenario.verify(Tv, ts)
+            temp_root = new_trace.root
+            new_node = cur_node.new_child(temp_root.init, temp_root.mode, temp_root.trace, cur_node.start_time + Tv, id)
+            cur_node.child.append(new_node)
+            print(f'Start time: {new_node.start_time}\nNode ID: {id}\nNew mode: {AgentMode(new_m)}')
+                
+            if new_node.start_time + Tv>=T: # if the time of the current simulation + start_time is at or above total time, don't add
+                continue
+            queue.append(new_node)
 
     trace.nodes = trace._get_all_nodes(trace.root)
+
     fig = go.Figure()
     # fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
     fig = reachtube_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
