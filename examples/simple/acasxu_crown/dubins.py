@@ -123,16 +123,18 @@ def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> tuple[torch.Tens
             arho_min = min(arho_min, arho)
 
     # there may be some weird bounds due to wrapping
-    # for now, can just add 2pi to theta_max, psi_max if either are less than their resp mins
+    # for now, adding 2pi to theta_max, psi_max if either are less than their resp mins
     # in the future, need to partition reach into multiple theta_bounds if theta_max<theta_min
     # for example, given t_min, t_max = pi-1, pi+1, instead of wrapping, need to have two bounds
     # [pi-1,pi] and [-pi, -pi+1] -- would need to do this for psi as well
     theta_min = wrap_to_pi((2*np.pi-own_set[1][2])+arho_min)
-    theta_max = wrap_to_pi((2*np.pi-own_set[0][2])+arho_max)
+    theta_max = wrap_to_pi((2*np.pi-own_set[0][2])+arho_max) 
+    theta_max = theta_max + 2*np.pi if theta_max<theta_min else theta_max
 
     psi_min = wrap_to_pi(own_set[0][2]-int_set[1][2])
     psi_max = wrap_to_pi(own_set[1][2]-int_set[0][2])
-    
+    psi_max = psi_max + 2*np.pi if psi_max<psi_min else psi_max
+
     return (torch.tensor([d_min, theta_min, psi_min, own_set[0][3], 
                           int_set[0][3]]), torch.tensor([d_max, theta_max, psi_max, own_set[1][3], int_set[1][3]]))
 
@@ -166,8 +168,8 @@ if __name__ == "__main__":
     scenario = Scenario(ScenarioConfig(parallel=False))
     car.set_initial(
         # initial_state=[[0, -0.5, 0, 1.0], [0.01, 0.5, 0, 1.0]],
-        # initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
-        initial_state=[[0, -1001, np.pi/3, 100], [0, -999, np.pi/3, 100]],
+        initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
+        # initial_state=[[0, -1001, np.pi/3, 100], [0, -999, np.pi/3, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
@@ -175,8 +177,8 @@ if __name__ == "__main__":
         initial_state=[[-2000, 0, 0, 100], [-2000, 0, 0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 20
-    Tv = 0.1
+    T = 160
+    Tv = 1
     ts = 0.01
     # observation: for Tv = 0.1 and a larger initial set of radius 10 in y dim, the number of 
 
@@ -187,9 +189,9 @@ if __name__ == "__main__":
     # trace = scenario.simulate(Tv, ts) # this is the root
     trace = scenario.verify(Tv, ts) # this is the root
     id = 1+trace.root.id
-    net = 0 # eventually this could be modified in the loop by some cmd_list var
-    model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
-    # models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
+    # net = 0 # eventually this could be modified in the loop by some cmd_list var
+    # model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
+    models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
     norm = float("inf")
 
     queue = deque()
@@ -201,11 +203,14 @@ if __name__ == "__main__":
         acas_min, acas_max = get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:])
         x_l, x_u = torch.tensor(acas_min).float().view(1,5), torch.tensor(acas_max).float().view(1,5)
         x = (x_l+x_u)/2
-        lirpa_model = BoundedModule(model, (torch.empty_like(x)))
+
+        last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string 
+        lirpa_model = BoundedModule(models[last_cmd-1], (torch.empty_like(x))) 
+        # lirpa_model = BoundedModule(model, (torch.empty_like(x))) 
+
         ptb_x = PerturbationLpNorm(norm = norm, x_L=x_l, x_U=x_u)
         bounded_x = BoundedTensor(x, ptb=ptb_x)
         lb, ub = lirpa_model.compute_bounds(bounded_x, method='alpha-CROWN')
-
         new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
         new_modes = []
         for i in range(len(ub.numpy()[0])):
