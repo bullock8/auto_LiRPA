@@ -31,6 +31,9 @@ class TrackMode(Enum):
     M21 = auto()
     M10 = auto()
 
+means_for_scaling = torch.FloatTensor([19791.091, 0.0, 0.0, 650.0, 600.0])
+range_for_scaling = torch.FloatTensor([60261.0, 6.28318530718, 6.28318530718, 1100.0, 1200.0])
+
 class Model(nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -51,7 +54,7 @@ def get_acas_state_torch(own_state: torch.Tensor, int_state: torch.Tensor) -> to
     def wtp(x: float): 
         return torch.remainder((x + torch.pi), (2 * torch.pi)) - torch.pi
     dist = torch.sqrt((own_state[0]-int_state[0])**2+(own_state[1]-int_state[1])**2)
-    theta = wtp((2*torch.pi-own_state[2])+torch.arctan2(int_state[1], int_state[0]))
+    theta = wtp((2*torch.pi-own_state[2])+torch.arctan2(int_state[1]-own_state[1], int_state[0]-own_state[0]))
     psi = wtp(int_state[2]-own_state[2])
     return torch.tensor([dist, theta, psi, own_state[3], int_state[3]])
 
@@ -70,6 +73,7 @@ if __name__ == "__main__":
     car.set_initial(
         # initial_state=[[0, -0.5, 0, 1.0], [0.01, 0.5, 0, 1.0]],
         initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
+        # initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
@@ -77,8 +81,8 @@ if __name__ == "__main__":
         initial_state=[[-2000, 0, 0, 100], [-2000, 0, 0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 20
-    Tv = 0.1
+    T = 100
+    Tv = 1
     ts = 0.01
 
     scenario.config.print_level = 0
@@ -87,7 +91,8 @@ if __name__ == "__main__":
     trace = scenario.simulate(Tv, ts) # this is the root
     id = 1+trace.root.id
     net = 0 # eventually this could be modified in the loop by some cmd_list var
-    model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
+    # model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
+    models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
     queue = deque()
     queue.append(trace.root) # queue should only contain ATNs  
     ### begin looping
@@ -95,9 +100,13 @@ if __name__ == "__main__":
         cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
         own_state, int_state = get_final_states_sim(cur_node)
         acas_state = get_acas_state(own_state[1:], int_state[1:]).float()
-        ads = model(acas_state.view(1,5)).detach().numpy()
-        print(ads)
-        new_mode = np.argmax(ads[0])+1 # will eventually be a list
+        acas_state = (acas_state-means_for_scaling)/range_for_scaling # normalization
+        # ads = model(acas_state.view(1,5)).detach().numpy()
+        last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string 
+        ads = models[last_cmd-1](acas_state.view(1,5)).detach().numpy()
+        # print(ads)
+        # new_mode = np.argmax(ads[0])+1 # will eventually be a list
+        new_mode = np.argmin(ads[0])+1 # will eventually be a list
         # print(AgentMode(new_mode))
         # if AgentMode(new_mode)==AgentMode.WL:
         #     print(cur_node.start_time)

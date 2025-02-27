@@ -33,6 +33,8 @@ class TrackMode(Enum):
     M21 = auto()
     M10 = auto()
 
+means_for_scaling = torch.FloatTensor([19791.091, 0.0, 0.0, 650.0, 600.0])
+range_for_scaling = torch.FloatTensor([60261.0, 6.28318530718, 6.28318530718, 1100.0, 1200.0])
 # class Model(nn.Module):
 #     def __init__(self, net: int = 0, *args, **kwargs):
 #         super().__init__(*args, **kwargs)
@@ -118,7 +120,7 @@ def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> tuple[torch.Tens
     arho_max = -np.pi
     for own_vert in own_ext:
         for int_vert in int_ext:
-            arho = np.arctan2(int_vert[1]-own_vert[1],int_vert[0]-own_vert[0]) % 2*np.pi
+            arho = np.arctan2(int_vert[1]-own_vert[1],int_vert[0]-own_vert[0]) % (2*np.pi)
             arho_max = max(arho_max, arho)
             arho_min = min(arho_min, arho)
 
@@ -131,8 +133,8 @@ def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> tuple[torch.Tens
     theta_max = wrap_to_pi((2*np.pi-own_set[0][2])+arho_max) 
     theta_max = theta_max + 2*np.pi if theta_max<theta_min else theta_max
 
-    psi_min = wrap_to_pi(own_set[0][2]-int_set[1][2])
-    psi_max = wrap_to_pi(own_set[1][2]-int_set[0][2])
+    psi_min = wrap_to_pi(int_set[0][2]-own_set[1][2])
+    psi_max = wrap_to_pi(int_set[1][2]-own_set[0][2])
     psi_max = psi_max + 2*np.pi if psi_max<psi_min else psi_max
 
     return (torch.tensor([d_min, theta_min, psi_min, own_set[0][3], 
@@ -168,8 +170,9 @@ if __name__ == "__main__":
     scenario = Scenario(ScenarioConfig(parallel=False))
     car.set_initial(
         # initial_state=[[0, -0.5, 0, 1.0], [0.01, 0.5, 0, 1.0]],
-        initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
+        # initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
         # initial_state=[[0, -1001, np.pi/3, 100], [0, -999, np.pi/3, 100]],
+        initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
@@ -177,7 +180,7 @@ if __name__ == "__main__":
         initial_state=[[-2000, 0, 0, 100], [-2000, 0, 0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 160
+    T = 100
     Tv = 1
     ts = 0.01
     # observation: for Tv = 0.1 and a larger initial set of radius 10 in y dim, the number of 
@@ -201,6 +204,7 @@ if __name__ == "__main__":
         cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
         own_state, int_state = get_final_states_verify(cur_node)
         acas_min, acas_max = get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:])
+        acas_min, acas_max = (acas_min-means_for_scaling)/range_for_scaling, (acas_max-means_for_scaling)/range_for_scaling
         x_l, x_u = torch.tensor(acas_min).float().view(1,5), torch.tensor(acas_max).float().view(1,5)
         x = (x_l+x_u)/2
 
@@ -211,11 +215,16 @@ if __name__ == "__main__":
         ptb_x = PerturbationLpNorm(norm = norm, x_L=x_l, x_U=x_u)
         bounded_x = BoundedTensor(x, ptb=ptb_x)
         lb, ub = lirpa_model.compute_bounds(bounded_x, method='alpha-CROWN')
-        new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
+        # new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
+        new_mode = np.argmin(lb.numpy())+1 # will eventually be a list/need to check upper and lower bounds
+        
         new_modes = []
         for i in range(len(ub.numpy()[0])):
-            upper = ub.numpy()[0][i]
-            if upper>=lb.numpy()[0][new_mode-1]:
+            # upper = ub.numpy()[0][i]
+            # if upper>=lb.numpy()[0][new_mode-1]:
+            #     new_modes.append(i+1)
+            lower = lb.numpy()[0][i]
+            if lower<=ub.numpy()[0][new_mode-1]:
                 new_modes.append(i+1)
         
         for new_m in new_modes:
