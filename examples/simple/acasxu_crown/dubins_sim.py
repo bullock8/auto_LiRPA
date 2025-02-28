@@ -126,6 +126,8 @@ if __name__ == "__main__":
         queue.append(new_node)
 
     trace.nodes = trace._get_all_nodes(trace.root)
+    # for node in trace.nodes:
+    #     print(f'Start time: {node.start_time}, Mode: ', node.mode['car1'][0])
     fig = go.Figure()
     fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
     fig.show()
