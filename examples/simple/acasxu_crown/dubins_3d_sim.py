@@ -161,9 +161,11 @@ def get_final_states_verify(n) -> Tuple[List]:
 def get_point_tau(own_state: np.ndarray, int_state: np.ndarray) -> float:
     z_own, z_int = own_state[2], int_state[2]
     vz_own, vz_int = own_state[-1]*np.sin(own_state[-2]), int_state[-1]*np.sin(int_state[-2])
-    return (z_int-z_own)/(vz_int-vz_own) # will be negative when z and vz are not aligned, which is fine
+    return -(z_int-z_own)/(vz_int-vz_own) # will be negative when z and vz are not aligned, which is fine
 
-def get_tau(tau: float) -> int:
+def get_tau_idx(own_state: np.ndarray, int_state: np.ndarray) -> int:
+    tau = get_point_tau(own_state, int_state)
+    print(tau)
     if tau<0:
         return 0 # following Stanley Bak, if tau<0, return 0 -- note that Stanley Bak also ends simulation if tau<0
     if tau>tau_list[-1]:
@@ -199,7 +201,7 @@ if __name__ == "__main__":
         initial_state=[[-2001, -1, 999, 0,0, 100], [-1999, 1, 1001, 0,0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 20
+    T = 50
     Tv = 1
     ts = 0.01
     # observation: for Tv = 0.1 and a larger initial set of radius 10 in y dim, the number of 
@@ -209,18 +211,13 @@ if __name__ == "__main__":
     scenario.add_agent(car)
     scenario.add_agent(car2)
     start = time.perf_counter()
-    trace = scenario.verify(Tv, ts) # this is the root
-    # trace = scenario.simulate(T, 0.1)
+    # trace = scenario.verify(Tv, ts) # this is the root
+    trace = scenario.simulate(Tv, ts)
     # trace = scenario.verify(T, 0.1)
-    # fig = go.Figure()
-    # fig = reachtube_tree(trace) y
-    # fig = simulation_tree_3d(trace, fig,1,'x', 2,'y',3,'z')
-    # fig = reachtube_tree_3d(trace, fig,1,'x', 2,'y',3,'z')
-    # fig.show()
-    # id = 1+trace.root.id
+    id = 1+trace.root.id
     # net = 0 # eventually this could be modified in the loop by some cmd_list var
     # model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
-    models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
+    models = [[torch.load(f"./examples/simple/acasxu_crown/nets/ACASXU_run2a_{net + 1}_{tau + 1}_batch_2000.pth") for tau in range(9)] for net in range(5)]
     norm = float("inf")
 
     queue = deque()
@@ -228,55 +225,31 @@ if __name__ == "__main__":
     ### begin looping
     while len(queue):
         cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
-        own_state, int_state = get_final_states_verify(cur_node)
-        acas_min, acas_max = get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:])
-        acas_min, acas_max = (acas_min-means_for_scaling)/range_for_scaling, (acas_max-means_for_scaling)/range_for_scaling
-        x_l, x_u = torch.tensor(acas_min).float().view(1,5), torch.tensor(acas_max).float().view(1,5)
-        x = (x_l+x_u)/2
-
-        last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string 
-        lirpa_model = BoundedModule(models[last_cmd-1], (torch.empty_like(x))) 
-        # lirpa_model = BoundedModule(model, (torch.empty_like(x))) 
-
-        ptb_x = PerturbationLpNorm(norm = norm, x_L=x_l, x_U=x_u)
-        bounded_x = BoundedTensor(x, ptb=ptb_x)
-        lb, ub = lirpa_model.compute_bounds(bounded_x, method='alpha-CROWN')
-        # new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
-        new_mode = np.argmin(lb.numpy())+1 # will eventually be a list/need to check upper and lower bounds
-        
-        new_modes = []
-        for i in range(len(ub.numpy()[0])):
-            # upper = ub.numpy()[0][i]
-            # if upper>=lb.numpy()[0][new_mode-1]:
-            #     new_modes.append(i+1)
-            lower = lb.numpy()[0][i]
-            if lower<=ub.numpy()[0][new_mode-1]:
-                new_modes.append(i+1)
-        
-        for new_m in new_modes:
-            scenario.set_init(
-                [[own_state[0][1:], own_state[1][1:]], [int_state[0][1:], int_state[0][1:]]], # this should eventually be a range 
-                [(AgentMode(new_m), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
-            )
-            id += 1
-            # new_trace = scenario.simulate(Tv, ts)
-            new_trace = scenario.verify(Tv, ts)
-            temp_root = new_trace.root
-            new_node = cur_node.new_child(temp_root.init, temp_root.mode, temp_root.trace, cur_node.start_time + Tv, id)
-            cur_node.child.append(new_node)
-            print(f'Start time: {new_node.start_time}\nNode ID: {id}\nNew mode: {AgentMode(new_m)}')
-                
-            if new_node.start_time + Tv>=T: # if the time of the current simulation + start_time is at or above total time, don't add
-                continue
-            queue.append(new_node)
+        own_state, int_state = get_final_states_sim(cur_node)
+        acas_state = get_acas_state(own_state[1:], int_state[1:]).float()
+        acas_state = (acas_state-means_for_scaling)/range_for_scaling # normalization
+        # ads = model(acas_state.view(1,5)).detach().numpy()
+        last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string
+        tau_idx = get_tau_idx(own_state[1:], int_state[1:])
+        print(f'Last Command: {last_cmd}, Tau Index: {tau_idx}')
+        ads = models[last_cmd-1][tau_idx](acas_state.view(1,5)).detach().numpy()
+        new_mode = np.argmin(ads[0])+1 # will eventually be a list
+        scenario.set_init(
+            [[own_state[1:], own_state[1:]], [int_state[1:], int_state[1:]]], # this should eventually be a range 
+            [(AgentMode(new_mode), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
+        )
+        id += 1
+        new_trace = scenario.simulate(Tv, ts)
+        temp_root = new_trace.root
+        new_node = cur_node.new_child(temp_root.init, temp_root.mode, temp_root.trace, cur_node.start_time + Tv, id)
+        cur_node.child.append(new_node)
+        if new_node.start_time + Tv>=T: # if the time of the current simulation + start_time is at or above total time, don't add
+            continue
+        queue.append(new_node)
 
     trace.nodes = trace._get_all_nodes(trace.root)
-    print(f'Verification time: {time.perf_counter()-start}')
-
+    # for node in trace.nodes:
+    #     print(f'Start time: {node.start_time}, Mode: ', node.mode['car1'][0])
     fig = go.Figure()
-    # fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
-    fig = reachtube_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
+    fig = simulation_tree_3d(trace, fig,1,'x', 2,'y',3,'z')
     fig.show()
-    trace = scenario.verify(0.2,0.1) # increasing ts to 0.1 to increase learning speed, do the same for dryvr2
-    fig = reachtube_tree(trace) 
-    fig.show() 

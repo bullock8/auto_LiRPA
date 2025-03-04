@@ -170,9 +170,9 @@ if __name__ == "__main__":
     scenario = Scenario(ScenarioConfig(parallel=False))
     car.set_initial(
         # initial_state=[[0, -0.5, 0, 1.0], [0.01, 0.5, 0, 1.0]],
-        initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
+        # initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
         # initial_state=[[0, -1001, np.pi/3, 100], [0, -999, np.pi/3, 100]],
-        # initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
+        initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
@@ -180,7 +180,7 @@ if __name__ == "__main__":
         initial_state=[[-2000, 0, 0, 100], [-2000, 0, 0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 50
+    T = 100
     Tv = 1
     ts = 0.01
     # observation: for Tv = 0.1 and a larger initial set of radius 10 in y dim, the number of 

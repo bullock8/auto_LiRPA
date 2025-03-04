@@ -129,7 +129,7 @@ class CarAgent(BaseAgent):
             steering = 1.5*deg_to_rad
         elif vehicle_mode == "WR":
             steering = -1.5*deg_to_rad
-        elif vehicle_lane == "SL":
+        elif vehicle_mode == "SL":
             steering = 3*deg_to_rad
         elif vehicle_mode == "SR":
             steering = -3*deg_to_rad
