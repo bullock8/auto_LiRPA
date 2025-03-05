@@ -52,7 +52,7 @@ def get_acas_state(own_state: np.ndarray, int_state: np.ndarray) -> torch.Tensor
     return torch.tensor([dist, theta, psi, own_state[3], int_state[3]])
 
 ### expects some 2x5 lists for both sets
-def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> tuple[torch.Tensor]: 
+def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> list[tuple[torch.Tensor]]: 
     def dist(pnt1, pnt2):
         return np.linalg.norm(
             np.array(pnt1) - np.array(pnt2)
@@ -131,14 +131,34 @@ def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> tuple[torch.Tens
     # [pi-1,pi] and [-pi, -pi+1] -- would need to do this for psi as well
     theta_min = wrap_to_pi((2*np.pi-own_set[1][2])+arho_min)
     theta_max = wrap_to_pi((2*np.pi-own_set[0][2])+arho_max) 
-    theta_max = theta_max + 2*np.pi if theta_max<theta_min else theta_max
+    # theta_max = theta_max + 2*np.pi if theta_max<theta_min else theta_max
+    theta_maxs = []
+    theta_mins = []
+    if theta_max<theta_min: # bound issue due to wrapping
+        theta_mins = [-np.pi, theta_min]
+        theta_maxs = [theta_max, np.pi]
+    else:
+        theta_mins = [theta_min]
+        theta_maxs = [theta_max]
 
     psi_min = wrap_to_pi(int_set[0][2]-own_set[1][2])
     psi_max = wrap_to_pi(int_set[1][2]-own_set[0][2])
-    psi_max = psi_max + 2*np.pi if psi_max<psi_min else psi_max
+    # psi_max = psi_max + 2*np.pi if psi_max<psi_min else psi_max
+    psi_maxs = []
+    psi_mins = []
+    if psi_max<psi_min: # bound issue due to wrapping
+        psi_mins = [-np.pi, psi_min]
+        psi_maxs = [psi_max, np.pi]
+    else:
+        psi_mins = [psi_min]
+        psi_maxs = [psi_max]
 
-    return (torch.tensor([d_min, theta_min, psi_min, own_set[0][3], 
-                          int_set[0][3]]), torch.tensor([d_max, theta_max, psi_max, own_set[1][3], int_set[1][3]]))
+    sets = [(torch.tensor([d_min, theta_mins[i], psi_mins[j], own_set[0][3], int_set[0][3]]), 
+             torch.tensor([d_max, theta_maxs[i], psi_maxs[j], own_set[1][3], int_set[1][3]])) for i in range(len(theta_mins)) for j in range(len(psi_mins))]
+    
+    return sets
+    # return (torch.tensor([d_min, theta_min, psi_min, own_set[0][3], 
+    #                       int_set[0][3]]), torch.tensor([d_max, theta_max, psi_max, own_set[1][3], int_set[1][3]]))
 
 def wtp(x: float): 
     return torch.remainder((x + torch.pi), (2 * torch.pi)) - torch.pi
@@ -203,31 +223,36 @@ if __name__ == "__main__":
     while len(queue):
         cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
         own_state, int_state = get_final_states_verify(cur_node)
-        acas_min, acas_max = get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:])
-        acas_min, acas_max = (acas_min-means_for_scaling)/range_for_scaling, (acas_max-means_for_scaling)/range_for_scaling
-        x_l, x_u = torch.tensor(acas_min).float().view(1,5), torch.tensor(acas_max).float().view(1,5)
-        x = (x_l+x_u)/2
+       
+        modes = set()
+        for reachset in get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:]):
+            # print(reachset)
+            acas_min, acas_max = reachset
+            acas_min, acas_max = (acas_min-means_for_scaling)/range_for_scaling, (acas_max-means_for_scaling)/range_for_scaling
+            x_l, x_u = torch.tensor(acas_min).float().view(1,5), torch.tensor(acas_max).float().view(1,5)
+            x = (x_l+x_u)/2
 
-        last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string 
-        lirpa_model = BoundedModule(models[last_cmd-1], (torch.empty_like(x))) 
-        # lirpa_model = BoundedModule(model, (torch.empty_like(x))) 
+            last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string 
+            lirpa_model = BoundedModule(models[last_cmd-1], (torch.empty_like(x))) 
+            # lirpa_model = BoundedModule(model, (torch.empty_like(x))) 
 
-        ptb_x = PerturbationLpNorm(norm = norm, x_L=x_l, x_U=x_u)
-        bounded_x = BoundedTensor(x, ptb=ptb_x)
-        lb, ub = lirpa_model.compute_bounds(bounded_x, method='alpha-CROWN')
-        # new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
-        new_mode = np.argmin(lb.numpy())+1 # will eventually be a list/need to check upper and lower bounds
+            ptb_x = PerturbationLpNorm(norm = norm, x_L=x_l, x_U=x_u)
+            bounded_x = BoundedTensor(x, ptb=ptb_x)
+            lb, ub = lirpa_model.compute_bounds(bounded_x, method='alpha-CROWN')
+            # new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
+            new_mode = np.argmin(lb.numpy())+1 # will eventually be a list/need to check upper and lower bounds
+            
+            new_modes = []
+            for i in range(len(ub.numpy()[0])):
+                # upper = ub.numpy()[0][i]
+                # if upper>=lb.numpy()[0][new_mode-1]:
+                #     new_modes.append(i+1)
+                lower = lb.numpy()[0][i]
+                if lower<=ub.numpy()[0][new_mode-1]:
+                    new_modes.append(i+1)
+            modes.update(new_modes)
         
-        new_modes = []
-        for i in range(len(ub.numpy()[0])):
-            # upper = ub.numpy()[0][i]
-            # if upper>=lb.numpy()[0][new_mode-1]:
-            #     new_modes.append(i+1)
-            lower = lb.numpy()[0][i]
-            if lower<=ub.numpy()[0][new_mode-1]:
-                new_modes.append(i+1)
-        
-        for new_m in new_modes:
+        for new_m in modes:
             scenario.set_init(
                 [[own_state[0][1:], own_state[1][1:]], [int_state[0][1:], int_state[0][1:]]], # this should eventually be a range 
                 [(AgentMode(new_m), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
