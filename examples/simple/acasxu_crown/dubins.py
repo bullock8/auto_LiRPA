@@ -189,18 +189,16 @@ if __name__ == "__main__":
     car2 = NPCAgent('car2')
     scenario = Scenario(ScenarioConfig(parallel=False))
     car.set_initial(
-        # initial_state=[[0, -0.5, 0, 1.0], [0.01, 0.5, 0, 1.0]],
-        # initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
+        initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
         # initial_state=[[0, -1001, np.pi/3, 100], [0, -999, np.pi/3, 100]],
-        initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
+        # initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3+np.pi/36, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
-        # initial_state=[[15, 15, 0, 0.5], [15, 15, 0, 0.5]],
         initial_state=[[-2000, 0, 0, 100], [-2000, 0, 0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 100
+    T = 55
     Tv = 1
     ts = 0.01
     # observation: for Tv = 0.1 and a larger initial set of radius 10 in y dim, the number of 
@@ -223,10 +221,12 @@ if __name__ == "__main__":
     while len(queue):
         cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
         own_state, int_state = get_final_states_verify(cur_node)
-       
         modes = set()
-        for reachset in get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:]):
-            # print(reachset)
+        reachsets = get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:])
+        # print(reachsets)
+        for reachset in reachsets:
+            if len(modes)==5: # if all modes are possible, stop iterating
+                break 
             acas_min, acas_max = reachset
             acas_min, acas_max = (acas_min-means_for_scaling)/range_for_scaling, (acas_max-means_for_scaling)/range_for_scaling
             x_l, x_u = torch.tensor(acas_min).float().view(1,5), torch.tensor(acas_max).float().view(1,5)

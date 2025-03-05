@@ -231,7 +231,7 @@ if __name__ == "__main__":
         # ads = model(acas_state.view(1,5)).detach().numpy()
         last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string
         tau_idx = get_tau_idx(own_state[1:], int_state[1:])
-        print(f'Last Command: {last_cmd}, Tau Index: {tau_idx}')
+        # print(f'Last Command: {last_cmd}, Tau Index: {tau_idx}')
         ads = models[last_cmd-1][tau_idx](acas_state.view(1,5)).detach().numpy()
         new_mode = np.argmin(ads[0])+1 # will eventually be a list
         scenario.set_init(

@@ -48,8 +48,9 @@ def get_acas_state(own_state: np.ndarray, int_state: np.ndarray) -> torch.Tensor
     psi = wrap_to_pi(int_state[3]-own_state[3])
     return torch.tensor([dist, theta, psi, own_state[-1], int_state[-1]])
 
-### expects some 2x5 lists for both sets
-def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> tuple[torch.Tensor]: 
+# recall new_state is [x,y,z,th,psi,v]
+### expects some 2x5 np arrays for both sets
+def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> list[tuple[torch.Tensor]]: 
     def dist(pnt1, pnt2):
         return np.linalg.norm(
             np.array(pnt1) - np.array(pnt2)
@@ -121,21 +122,32 @@ def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> tuple[torch.Tens
             arho_max = max(arho_max, arho)
             arho_min = min(arho_min, arho)
 
-    # there may be some weird bounds due to wrapping
-    # for now, adding 2pi to theta_max, psi_max if either are less than their resp mins
-    # in the future, need to partition reach into multiple theta_bounds if theta_max<theta_min
-    # for example, given t_min, t_max = pi-1, pi+1, instead of wrapping, need to have two bounds
-    # [pi-1,pi] and [-pi, -pi+1] -- would need to do this for psi as well
     theta_min = wrap_to_pi((2*np.pi-own_set[1][3])+arho_min)
     theta_max = wrap_to_pi((2*np.pi-own_set[0][3])+arho_max) 
-    theta_max = theta_max + 2*np.pi if theta_max<theta_min else theta_max
+    theta_maxs = []
+    theta_mins = []
+    if theta_max<theta_min: # bound issue due to wrapping
+        theta_mins = [-np.pi, theta_min]
+        theta_maxs = [theta_max, np.pi]
+    else:
+        theta_mins = [theta_min]
+        theta_maxs = [theta_max]
 
     psi_min = wrap_to_pi(int_set[0][3]-own_set[1][3])
     psi_max = wrap_to_pi(int_set[1][3]-own_set[0][3])
-    psi_max = psi_max + 2*np.pi if psi_max<psi_min else psi_max
+    psi_maxs = []
+    psi_mins = []
+    if psi_max<psi_min: # bound issue due to wrapping
+        psi_mins = [-np.pi, psi_min]
+        psi_maxs = [psi_max, np.pi]
+    else:
+        psi_mins = [psi_min]
+        psi_maxs = [psi_max]
 
-    return (torch.tensor([d_min, theta_min, psi_min, own_set[0][-1], 
-                          int_set[0][-1]]), torch.tensor([d_max, theta_max, psi_max, own_set[1][-1], int_set[1][-1]]))
+    sets = [(torch.tensor([d_min, theta_mins[i], psi_mins[j], own_set[0][-1], int_set[0][-1]]), 
+             torch.tensor([d_max, theta_maxs[i], psi_maxs[j], own_set[1][-1], int_set[1][-1]])) for i in range(len(theta_mins)) for j in range(len(psi_mins))]
+    
+    return sets
 
 def wtp(x: float): 
     return torch.remainder((x + torch.pi), (2 * torch.pi)) - torch.pi
@@ -161,9 +173,11 @@ def get_final_states_verify(n) -> Tuple[List]:
 def get_point_tau(own_state: np.ndarray, int_state: np.ndarray) -> float:
     z_own, z_int = own_state[2], int_state[2]
     vz_own, vz_int = own_state[-1]*np.sin(own_state[-2]), int_state[-1]*np.sin(int_state[-2])
-    return (z_int-z_own)/(vz_int-vz_own) # will be negative when z and vz are not aligned, which is fine
+    return -(z_int-z_own)/(vz_int-vz_own) # will be negative when z and vz are not aligned, which is fine
 
-def get_tau(tau: float) -> int:
+def get_tau_idx(own_state: np.ndarray, int_state: np.ndarray) -> int:
+    tau = get_point_tau(own_state, int_state)
+    # print(tau)
     if tau<0:
         return 0 # following Stanley Bak, if tau<0, return 0 -- note that Stanley Bak also ends simulation if tau<0
     if tau>tau_list[-1]:
@@ -177,7 +191,9 @@ def get_tau(tau: float) -> int:
                 return i+1
             
     return len(tau_list)-1 # this should be unreachable
-
+'''
+NOTE: In general, if vz is constant, then tau_dot = -1
+'''
 
 if __name__ == "__main__":
     import os
@@ -187,19 +203,17 @@ if __name__ == "__main__":
     car2 = NPCAgent('car2')
     scenario = Scenario(ScenarioConfig(parallel=False))
     car.set_initial(
-        # initial_state=[[0, -0.5, 0, 1.0], [0.01, 0.5, 0, 1.0]],
-        initial_state=[[-1, -1010, -1, np.pi/3, np.pi/6, 100], [1, -990, 1, np.pi/3, np.pi/6, 100]],
-        # initial_state=[[0, -1001, np.pi/3, 100], [0, -999, np.pi/3, 100]],
+        # initial_state=[[-1, -1010, -1, np.pi/3, np.pi/6, 100], [1, -990, 1, np.pi/3, np.pi/6, 100]],
+        initial_state=[[0, -1000, 0, np.pi/3, np.pi/6, 100], [0, -1000, 0, np.pi/3, np.pi/6, 100]],
         # initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
-        # initial_state=[[15, 15, 0, 0.5], [15, 15, 0, 0.5]],
         # initial_state=[[-2000, 0, 1000, 0,0, 100], [-2000, 0, 1000, 0,0, 100]],
         initial_state=[[-2001, -1, 999, 0,0, 100], [-1999, 1, 1001, 0,0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 20
+    T = 16
     Tv = 1
     ts = 0.01
     # observation: for Tv = 0.1 and a larger initial set of radius 10 in y dim, the number of 
@@ -210,17 +224,8 @@ if __name__ == "__main__":
     scenario.add_agent(car2)
     start = time.perf_counter()
     trace = scenario.verify(Tv, ts) # this is the root
-    # trace = scenario.simulate(T, 0.1)
-    # trace = scenario.verify(T, 0.1)
-    # fig = go.Figure()
-    # fig = reachtube_tree(trace) y
-    # fig = simulation_tree_3d(trace, fig,1,'x', 2,'y',3,'z')
-    # fig = reachtube_tree_3d(trace, fig,1,'x', 2,'y',3,'z')
-    # fig.show()
-    # id = 1+trace.root.id
-    # net = 0 # eventually this could be modified in the loop by some cmd_list var
-    # model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
-    models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
+    id = 1+trace.root.id
+    models = [[torch.load(f"./examples/simple/acasxu_crown/nets/ACASXU_run2a_{net + 1}_{tau + 1}_batch_2000.pth") for tau in range(9)] for net in range(5)]
     norm = float("inf")
 
     queue = deque()
@@ -229,31 +234,41 @@ if __name__ == "__main__":
     while len(queue):
         cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
         own_state, int_state = get_final_states_verify(cur_node)
-        acas_min, acas_max = get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:])
-        acas_min, acas_max = (acas_min-means_for_scaling)/range_for_scaling, (acas_max-means_for_scaling)/range_for_scaling
-        x_l, x_u = torch.tensor(acas_min).float().view(1,5), torch.tensor(acas_max).float().view(1,5)
-        x = (x_l+x_u)/2
+        tau_idx_min, tau_idx_max = get_tau_idx(own_state[1], int_state[0]), get_tau_idx(own_state[0], int_state[1]) 
+        # print(tau_idx_min, tau_idx_max)
+        modes = set()
+        reachsets = get_acas_reach(np.array(own_state)[:,1:], np.array(int_state)[:,1:])
+        # print(reachsets)
+        for reachset in reachsets:
+            if len(modes)==5: # if all modes are possible, stop iterating
+                break 
+            acas_min, acas_max = reachset
+            acas_min, acas_max = (acas_min-means_for_scaling)/range_for_scaling, (acas_max-means_for_scaling)/range_for_scaling
+            x_l, x_u = torch.tensor(acas_min).float().view(1,5), torch.tensor(acas_max).float().view(1,5)
+            x = (x_l+x_u)/2
 
-        last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string 
-        lirpa_model = BoundedModule(models[last_cmd-1], (torch.empty_like(x))) 
-        # lirpa_model = BoundedModule(model, (torch.empty_like(x))) 
-
-        ptb_x = PerturbationLpNorm(norm = norm, x_L=x_l, x_U=x_u)
-        bounded_x = BoundedTensor(x, ptb=ptb_x)
-        lb, ub = lirpa_model.compute_bounds(bounded_x, method='alpha-CROWN')
-        # new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
-        new_mode = np.argmin(lb.numpy())+1 # will eventually be a list/need to check upper and lower bounds
+            last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string 
+            for tau_idx in range(tau_idx_min, tau_idx_max+1):
+                lirpa_model = BoundedModule(models[last_cmd-1][tau_idx], (torch.empty_like(x))) 
+                # lirpa_model = BoundedModule(model, (torch.empty_like(x))) 
+                ptb_x = PerturbationLpNorm(norm = norm, x_L=x_l, x_U=x_u)
+                bounded_x = BoundedTensor(x, ptb=ptb_x)
+                lb, ub = lirpa_model.compute_bounds(bounded_x, method='alpha-CROWN')
+                # new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
+                new_mode = np.argmin(lb.numpy())+1 # will eventually be a list/need to check upper and lower bounds
+                
+                new_modes = []
+                for i in range(len(ub.numpy()[0])):
+                    # upper = ub.numpy()[0][i]
+                    # if upper>=lb.numpy()[0][new_mode-1]:
+                    #     new_modes.append(i+1)
+                    lower = lb.numpy()[0][i]
+                    if lower<=ub.numpy()[0][new_mode-1]:
+                        new_modes.append(i+1)
+                modes.update(new_modes)
         
-        new_modes = []
-        for i in range(len(ub.numpy()[0])):
-            # upper = ub.numpy()[0][i]
-            # if upper>=lb.numpy()[0][new_mode-1]:
-            #     new_modes.append(i+1)
-            lower = lb.numpy()[0][i]
-            if lower<=ub.numpy()[0][new_mode-1]:
-                new_modes.append(i+1)
-        
-        for new_m in new_modes:
+        print(modes, cur_node.start_time)
+        for new_m in modes:
             scenario.set_init(
                 [[own_state[0][1:], own_state[1][1:]], [int_state[0][1:], int_state[0][1:]]], # this should eventually be a range 
                 [(AgentMode(new_m), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
@@ -275,8 +290,6 @@ if __name__ == "__main__":
 
     fig = go.Figure()
     # fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
-    fig = reachtube_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
+    # fig = reachtube_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
+    fig = reachtube_tree_3d(trace, fig,1,'x', 2,'y',3,'z')
     fig.show()
-    trace = scenario.verify(0.2,0.1) # increasing ts to 0.1 to increase learning speed, do the same for dryvr2
-    fig = reachtube_tree(trace) 
-    fig.show() 
