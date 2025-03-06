@@ -116,8 +116,8 @@ def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> list[tuple[torch
     own_ext = [(own_set[i%2][0], own_set[i//2][1]) for i in range(4)] # will get ll, lr, ul, ur in order
     int_ext = [(int_set[i%2][0], int_set[i//2][1]) for i in range(4)] 
 
-    arho_min = np.pi # does this make sense
-    arho_max = -np.pi
+    arho_min = np.inf # does this make sense
+    arho_max = -np.inf
     for own_vert in own_ext:
         for int_vert in int_ext:
             arho = np.arctan2(int_vert[1]-own_vert[1],int_vert[0]-own_vert[0]) % (2*np.pi)

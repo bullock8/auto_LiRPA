@@ -114,8 +114,8 @@ def get_acas_reach(own_set: np.ndarray, int_set: np.ndarray) -> list[tuple[torch
     own_ext = [(own_set[i%2][0], own_set[i//2][1]) for i in range(4)] # will get ll, lr, ul, ur in order
     int_ext = [(int_set[i%2][0], int_set[i//2][1]) for i in range(4)] 
 
-    arho_min = np.pi # does this make sense
-    arho_max = -np.pi
+    arho_min = np.inf # does this make sense
+    arho_max = -np.inf
     for own_vert in own_ext:
         for int_vert in int_ext:
             arho = np.arctan2(int_vert[1]-own_vert[1],int_vert[0]-own_vert[0]) % (2*np.pi)
@@ -203,8 +203,8 @@ if __name__ == "__main__":
     car2 = NPCAgent('car2')
     scenario = Scenario(ScenarioConfig(parallel=False))
     car.set_initial(
-        # initial_state=[[-1, -1010, -1, np.pi/3, np.pi/6, 100], [1, -990, 1, np.pi/3, np.pi/6, 100]],
-        initial_state=[[0, -1000, 0, np.pi/3, np.pi/6, 100], [0, -1000, 0, np.pi/3, np.pi/6, 100]],
+        initial_state=[[-1, -1010, -1, np.pi/3, np.pi/6, 100], [1, -990, 1, np.pi/3, np.pi/6, 100]],
+        # initial_state=[[0, -1000, 0, np.pi/3, np.pi/6, 100], [0, -1000, 0, np.pi/3, np.pi/6, 100]],
         # initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
@@ -213,13 +213,13 @@ if __name__ == "__main__":
         initial_state=[[-2001, -1, 999, 0,0, 100], [-1999, 1, 1001, 0,0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 16
+    T = 20
     Tv = 1
     ts = 0.01
     # observation: for Tv = 0.1 and a larger initial set of radius 10 in y dim, the number of 
 
     scenario.config.print_level = 0
-    # scenario.config.reachability_method = ReachabilityMethod.DRYVR_DISC
+    scenario.config.reachability_method = ReachabilityMethod.DRYVR_DISC
     scenario.add_agent(car)
     scenario.add_agent(car2)
     start = time.perf_counter()
@@ -254,6 +254,7 @@ if __name__ == "__main__":
                 ptb_x = PerturbationLpNorm(norm = norm, x_L=x_l, x_U=x_u)
                 bounded_x = BoundedTensor(x, ptb=ptb_x)
                 lb, ub = lirpa_model.compute_bounds(bounded_x, method='alpha-CROWN')
+
                 # new_mode = np.argmax(ub.numpy())+1 # will eventually be a list/need to check upper and lower bounds
                 new_mode = np.argmin(lb.numpy())+1 # will eventually be a list/need to check upper and lower bounds
                 
