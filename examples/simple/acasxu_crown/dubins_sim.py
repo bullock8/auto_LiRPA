@@ -14,6 +14,7 @@ import numpy as np
 import torch
 from collections import deque
 from torch import nn
+import time
 
 class AgentMode(Enum):
     COC = auto()
@@ -72,8 +73,8 @@ if __name__ == "__main__":
     scenario = Scenario(ScenarioConfig(parallel=False))
     car.set_initial(
         # initial_state=[[0, -0.5, 0, 1.0], [0.01, 0.5, 0, 1.0]],
-        initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
-        # initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
+        # initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
+        initial_state=[[0, -1100, np.pi/3, 100], [0, -900, np.pi/3, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
@@ -84,52 +85,63 @@ if __name__ == "__main__":
     T = 100
     Tv = 1
     ts = 0.01
-
+    N = 10
+    models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
     scenario.config.print_level = 0
     scenario.add_agent(car)
     scenario.add_agent(car2)
-    trace = scenario.simulate(Tv, ts) # this is the root
-    id = 1+trace.root.id
-    net = 0 # eventually this could be modified in the loop by some cmd_list var
-    # model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
-    models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
-    queue = deque()
-    queue.append(trace.root) # queue should only contain ATNs  
-    ### begin looping
-    while len(queue):
-        cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
-        own_state, int_state = get_final_states_sim(cur_node)
-        acas_state = get_acas_state(own_state[1:], int_state[1:]).float()
-        acas_state = (acas_state-means_for_scaling)/range_for_scaling # normalization
-        # ads = model(acas_state.view(1,5)).detach().numpy()
-        last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string 
-        ads = models[last_cmd-1](acas_state.view(1,5)).detach().numpy()
-        # print(ads)
-        # new_mode = np.argmax(ads[0])+1 # will eventually be a list
-        new_mode = np.argmin(ads[0])+1 # will eventually be a list
-        # print(AgentMode(new_mode))
-        # if AgentMode(new_mode)==AgentMode.WL:
-        #     print(cur_node.start_time)
-        #     exit()
-        # this will eventually be a loop
-        scenario.set_init(
-            [[own_state[1:], own_state[1:]], [int_state[1:], int_state[1:]]], # this should eventually be a range 
-            [(AgentMode(new_mode), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
-        )
-        id += 1
-        new_trace = scenario.simulate(Tv, ts)
-        temp_root = new_trace.root
-        new_node = cur_node.new_child(temp_root.init, temp_root.mode, temp_root.trace, cur_node.start_time + Tv, id)
-        cur_node.child.append(new_node)
-        if new_node.start_time + Tv>=T: # if the time of the current simulation + start_time is at or above total time, don't add
-            continue
-        queue.append(new_node)
+    start = time.perf_counter()
+    traces = []
 
-    trace.nodes = trace._get_all_nodes(trace.root)
+    for i in range(N):
+        scenario.set_init(
+            [[[0, -1100, np.pi/3, 100], [0, -900, np.pi/3, 100]], [[-2000, 0, 0, 100], [-2000, 0, 0, 100]]],
+            [(AgentMode.COC, TrackMode.T1), (AgentMode.COC, TrackMode.T1)]
+        )
+        trace = scenario.simulate(Tv, ts) # this is the root
+        id = 1+trace.root.id
+        # net = 0 # eventually this could be modified in the loop by some cmd_list var
+        # model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
+        queue = deque()
+        queue.append(trace.root) # queue should only contain ATNs  
+        ### begin looping
+        while len(queue):
+            cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
+            own_state, int_state = get_final_states_sim(cur_node)
+            acas_state = get_acas_state(own_state[1:], int_state[1:]).float()
+            acas_state = (acas_state-means_for_scaling)/range_for_scaling # normalization
+            # ads = model(acas_state.view(1,5)).detach().numpy()
+            last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string 
+            ads = models[last_cmd-1](acas_state.view(1,5)).detach().numpy()
+            # print(ads)
+            # new_mode = np.argmax(ads[0])+1 # will eventually be a list
+            new_mode = np.argmin(ads[0])+1 # will eventually be a list
+            # print(AgentMode(new_mode))
+            # if AgentMode(new_mode)==AgentMode.WL:
+            #     print(cur_node.start_time)
+            #     exit()
+            # this will eventually be a loop
+            scenario.set_init(
+                [[own_state[1:], own_state[1:]], [int_state[1:], int_state[1:]]], # this should eventually be a range 
+                [(AgentMode(new_mode), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
+            )
+            id += 1
+            new_trace = scenario.simulate(Tv, ts)
+            temp_root = new_trace.root
+            new_node = cur_node.new_child(temp_root.init, temp_root.mode, temp_root.trace, cur_node.start_time + Tv, id)
+            cur_node.child.append(new_node)
+            if new_node.start_time + Tv>=T: # if the time of the current simulation + start_time is at or above total time, don't add
+                continue
+            queue.append(new_node)
+
+        trace.nodes = trace._get_all_nodes(trace.root)
+        traces.append(trace)
     # for node in trace.nodes:
     #     print(f'Start time: {node.start_time}, Mode: ', node.mode['car1'][0])
+    print(f'Total runtime: {time.perf_counter()-start} for {N} simulation(s)')
     fig = go.Figure()
-    fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
+    for trace in traces:
+        fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
     fig.show()
     # trace = scenario.verify(0.2,0.1) # increasing ts to 0.1 to increase learning speed, do the same for dryvr2
     # fig = reachtube_tree(trace) 

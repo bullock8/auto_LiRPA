@@ -267,7 +267,7 @@ if __name__ == "__main__":
                         new_modes.append(i+1)
                 modes.update(new_modes)
         
-        print(modes, cur_node.start_time)
+        # print(modes, cur_node.start_time) # at 15 s, all modes possible -- investigate why
         for new_m in modes:
             scenario.set_init(
                 [[own_state[0][1:], own_state[1][1:]], [int_state[0][1:], int_state[0][1:]]], # this should eventually be a range 
