@@ -74,7 +74,7 @@ if __name__ == "__main__":
     car.set_initial(
         # initial_state=[[0, -0.5, 0, 1.0], [0.01, 0.5, 0, 1.0]],
         # initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
-        initial_state=[[0, -1100, np.pi/3, 100], [0, -900, np.pi/3, 100]],
+        initial_state=[[-100, -1100, np.pi/3, 100], [100, -900, np.pi/3, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     T = 100
     Tv = 1
     ts = 0.01
-    N = 10
+    N = 100
     models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
     scenario.config.print_level = 0
     scenario.add_agent(car)
@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
     for i in range(N):
         scenario.set_init(
-            [[[0, -1100, np.pi/3, 100], [0, -900, np.pi/3, 100]], [[-2000, 0, 0, 100], [-2000, 0, 0, 100]]],
+            [[[-100, -1100, np.pi/3, 100], [100, -900, np.pi/3, 100]], [[-2000, 0, 0, 100], [-2000, 0, 0, 100]]],
             [(AgentMode.COC, TrackMode.T1), (AgentMode.COC, TrackMode.T1)]
         )
         trace = scenario.simulate(Tv, ts) # this is the root

@@ -165,7 +165,7 @@ def get_point_tau(own_state: np.ndarray, int_state: np.ndarray) -> float:
 
 def get_tau_idx(own_state: np.ndarray, int_state: np.ndarray) -> int:
     tau = get_point_tau(own_state, int_state)
-    print(tau)
+    # print(tau)
     if tau<0:
         return 0 # following Stanley Bak, if tau<0, return 0 -- note that Stanley Bak also ends simulation if tau<0
     if tau>tau_list[-1]:
@@ -204,6 +204,7 @@ if __name__ == "__main__":
     T = 50
     Tv = 1
     ts = 0.01
+    N = 100
     # observation: for Tv = 0.1 and a larger initial set of radius 10 in y dim, the number of 
 
     scenario.config.print_level = 0
@@ -211,45 +212,63 @@ if __name__ == "__main__":
     scenario.add_agent(car)
     scenario.add_agent(car2)
     start = time.perf_counter()
-    # trace = scenario.verify(Tv, ts) # this is the root
-    trace = scenario.simulate(Tv, ts)
-    # trace = scenario.verify(T, 0.1)
-    id = 1+trace.root.id
+    # trace = scenario.simulate(Tv, ts)
+    # id = 1+trace.root.id
     # net = 0 # eventually this could be modified in the loop by some cmd_list var
     # model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
     models = [[torch.load(f"./examples/simple/acasxu_crown/nets/ACASXU_run2a_{net + 1}_{tau + 1}_batch_2000.pth") for tau in range(9)] for net in range(5)]
     norm = float("inf")
 
-    queue = deque()
-    queue.append(trace.root) # queue should only contain ATNs  
+    # queue = deque()
+    # queue.append(trace.root) # queue should only contain ATNs  
     ### begin looping
-    while len(queue):
-        cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
-        own_state, int_state = get_final_states_sim(cur_node)
-        acas_state = get_acas_state(own_state[1:], int_state[1:]).float()
-        acas_state = (acas_state-means_for_scaling)/range_for_scaling # normalization
-        # ads = model(acas_state.view(1,5)).detach().numpy()
-        last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string
-        tau_idx = get_tau_idx(own_state[1:], int_state[1:])
-        # print(f'Last Command: {last_cmd}, Tau Index: {tau_idx}')
-        ads = models[last_cmd-1][tau_idx](acas_state.view(1,5)).detach().numpy()
-        new_mode = np.argmin(ads[0])+1 # will eventually be a list
+    traces = []
+    for i in range(N):
         scenario.set_init(
-            [[own_state[1:], own_state[1:]], [int_state[1:], int_state[1:]]], # this should eventually be a range 
-            [(AgentMode(new_mode), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
+            [[[-100, -1000, -1, np.pi/3, np.pi/6, 100], [100, -900, 1, np.pi/3, np.pi/6, 100]],
+              [[-2001, -1, 999, 0,0, 100], [-1999, 1, 1001, 0,0, 100]]],
+            [(AgentMode.COC, TrackMode.T1), (AgentMode.COC, TrackMode.T1)]
         )
-        id += 1
-        new_trace = scenario.simulate(Tv, ts)
-        temp_root = new_trace.root
-        new_node = cur_node.new_child(temp_root.init, temp_root.mode, temp_root.trace, cur_node.start_time + Tv, id)
-        cur_node.child.append(new_node)
-        if new_node.start_time + Tv>=T: # if the time of the current simulation + start_time is at or above total time, don't add
-            continue
-        queue.append(new_node)
+        trace = scenario.simulate(Tv, ts) # this is the root
+        id = 1+trace.root.id
+        # net = 0 # eventually this could be modified in the loop by some cmd_list var
+        # model = torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth")
+        queue = deque()
+        queue.append(trace.root) # queue should only contain ATNs  
+        while len(queue):
+            cur_node = queue.popleft() # equivalent to trace.nodes[0] in this case
+            own_state, int_state = get_final_states_sim(cur_node)
+            acas_state = get_acas_state(own_state[1:], int_state[1:]).float()
+            acas_state = (acas_state-means_for_scaling)/range_for_scaling # normalization
+            # ads = model(acas_state.view(1,5)).detach().numpy()
+            last_cmd = getattr(AgentMode, cur_node.mode['car1'][0]).value  # cur_mode.mode[.] is some string
+            tau_idx = get_tau_idx(own_state[1:], int_state[1:])
+            # print(f'Last Command: {last_cmd}, Tau Index: {tau_idx}')
+            ads = models[last_cmd-1][tau_idx](acas_state.view(1,5)).detach().numpy()
+            new_mode = np.argmin(ads[0])+1 # will eventually be a list
+            scenario.set_init(
+                [[own_state[1:], own_state[1:]], [int_state[1:], int_state[1:]]], # this should eventually be a range 
+                [(AgentMode(new_mode), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
+            )
+            id += 1
+            new_trace = scenario.simulate(Tv, ts)
+            temp_root = new_trace.root
+            new_node = cur_node.new_child(temp_root.init, temp_root.mode, temp_root.trace, cur_node.start_time + Tv, id)
+            cur_node.child.append(new_node)
+            if new_node.start_time + Tv>=T: # if the time of the current simulation + start_time is at or above total time, don't add
+                continue
+            queue.append(new_node)
+        
+        trace.nodes = trace._get_all_nodes(trace.root)
+        traces.append(trace)
 
+    print(f'Total {N} simulations: {(time.perf_counter()-start):.2f} s')
     trace.nodes = trace._get_all_nodes(trace.root)
     # for node in trace.nodes:
     #     print(f'Start time: {node.start_time}, Mode: ', node.mode['car1'][0])
     fig = go.Figure()
-    fig = simulation_tree_3d(trace, fig,1,'x', 2,'y',3,'z')
+    print(len(traces))
+    for trace in traces:
+        fig = simulation_tree_3d(trace, fig,1,'x', 2,'y',3,'z')
+    # fig = simulation_tree_3d(trace, fig,1,'x', 2,'y',3,'z')
     fig.show()

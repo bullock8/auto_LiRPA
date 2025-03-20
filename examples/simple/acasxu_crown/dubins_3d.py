@@ -210,7 +210,7 @@ if __name__ == "__main__":
     )
     car2.set_initial(
         # initial_state=[[-2000, 0, 1000, 0,0, 100], [-2000, 0, 1000, 0,0, 100]],
-        initial_state=[[-2001, -1, 999, 0,0, 100], [-1999, 1, 1001, 0,0, 100]],
+        initial_state=[[-2001, -10, 999, 0,0, 100], [-1999, 10, 1001, 0,0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     T = 25
@@ -271,7 +271,7 @@ if __name__ == "__main__":
         # print(modes, cur_node.start_time) # at 15 s, all modes possible -- investigate why
         for new_m in modes:
             scenario.set_init(
-                [[own_state[0][1:], own_state[1][1:]], [int_state[0][1:], int_state[0][1:]]], # this should eventually be a range 
+                [[own_state[0][1:], own_state[1][1:]], [int_state[0][1:], int_state[1][1:]]], # this should eventually be a range 
                 [(AgentMode(new_m), TrackMode.T1),(AgentMode.COC, TrackMode.T1)]
             )
             id += 1

@@ -189,22 +189,22 @@ if __name__ == "__main__":
     car2 = NPCAgent('car2')
     scenario = Scenario(ScenarioConfig(parallel=False))
     car.set_initial(
-        initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
+        # initial_state=[[0, -1010, np.pi/3, 100], [0, -990, np.pi/3, 100]],
         # initial_state=[[0, -1001, np.pi/3, 100], [0, -999, np.pi/3, 100]],
-        # initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3+np.pi/36, 100]],
+        initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
         initial_state=[[-2000, 0, 0, 100], [-2000, 0, 0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 55
+    T = 30
     Tv = 1
     ts = 0.01
     # observation: for Tv = 0.1 and a larger initial set of radius 10 in y dim, the number of 
 
     scenario.config.print_level = 0
-    scenario.config.reachability_method = ReachabilityMethod.DRYVR_DISC
+    # scenario.config.reachability_method = ReachabilityMethod.DRYVR_DISC
     scenario.add_agent(car)
     scenario.add_agent(car2)
     start = time.perf_counter()
@@ -274,7 +274,8 @@ if __name__ == "__main__":
 
     fig = go.Figure()
     # fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
-    fig = reachtube_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
+    # fig = reachtube_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
+    fig = reachtube_anime(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
     fig.show()
     # trace = scenario.verify(0.2,0.1) # increasing ts to 0.1 to increase learning speed, do the same for dryvr2
     # fig = reachtube_tree(trace) 
