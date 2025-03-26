@@ -275,28 +275,31 @@ class AircraftAgent(BaseAgent):
             # print(cmd)
             # ref_input = self.cmd2ref(cmd, state)
             # ref_input = self.cmd2ref(curr_t, time_bound, initGuamState, state, cmd) # for the single command for the horizon
-            if init[-1] < 0: # intruder vehicle
-                """ correspond to the control of intruder """
-                # ref_input = lift_cruise_reference_inputs_turn_right(curr_t, time_bound, initGuamState, 0)
+            # if init[-1] < 0: # intruder vehicle
+            #     """ correspond to the control of intruder """
+            #     # ref_input = lift_cruise_reference_inputs_turn_right(curr_t, time_bound, initGuamState, 0)
                 
-                #ref_input = lift_cruise_reference_inputs_turn_random(self.dt, curr_t, time_bound, initGuamState, cmd_list)
-                vel_bIc = np.array([0,0,0])
-                pos_bii = np.array([0, 200, -10])
-                ref_input = RefInputs(vel_bIc, pos_bii, Chi_des=np.array(0.0), Chi_dot_des=np.array(0.0))
-            else: # ownship vehicle
-                """ correspond to the control of ego vehicle """
-                # JB 5.13
-                #print(f"self: {self.}")
-                ego_cmd = self.action_handler(mode, state, lane_map)
-                # New
-                #ego_cmd = 4
+            #     #ref_input = lift_cruise_reference_inputs_turn_random(self.dt, curr_t, time_bound, initGuamState, cmd_list)
+            #     vel_bIc = np.array([0,0,0])
+            #     pos_bii = np.array([0, 200, -10])
+            #     ref_input = RefInputs(vel_bIc, pos_bii, Chi_des=np.array(0.0), Chi_dot_des=np.array(0.0))
+            # else: # ownship vehicle
+            """ correspond to the control of ego vehicle """
+            # JB 5.13
+            #print(f"self: {self.}")
+            ego_cmd = self.action_handler(mode, state, lane_map)
+            # New
+            #ego_cmd = 4
 
-                # ref_input = lift_cruise_reference_inputs_turn_right(curr_t, time_bound, initGuamState, ego_cmd)
-                ref_input = lift_cruise_reference_inputs_turn_right(curr_t, time_bound, initGuamState, ego_cmd)
-                # JB (5/13) ref_input = lift_cruise_reference_inputs_turn_random(self.dt, curr_t, time_bound, initGuamState, decisions)
+            # ref_input = lift_cruise_reference_inputs_turn_right(curr_t, time_bound, initGuamState, ego_cmd)
+            ref_input = lift_cruise_reference_inputs_turn_right(curr_t, time_bound, initGuamState, ego_cmd)
+            # JB (5/13) ref_input = lift_cruise_reference_inputs_turn_random(self.dt, curr_t, time_bound, initGuamState, decisions)
+            print(state_arr[6:9])
+            print(ref_input.Vel_bIc_des, curr_t)
             state = self.step(time_step, state, ref_input)
             # print(vec[1])
             state_arr = self.GuamState2array(state, kk+1)
+            print(state_arr[6:9])
             time_arr = [curr_t + time_step]
             #print(time_arr)
             time_state_arr = [curr_t + time_step] + state_arr

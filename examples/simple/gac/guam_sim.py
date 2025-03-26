@@ -82,7 +82,7 @@ def dubins_to_guam_2d(state: List) -> List:
 def guam_to_dubins_2d(state: np.ndarray) -> List: 
     vx, vy, vz = state[6:9]
     x, y = state[12:14]
-    theta = wrap_to_pi(np.arctan(vy/vx))
+    theta = wrap_to_pi(np.arctan2(vy, vx))
     v = np.sqrt(vx**2+vy**2+vz**2)
     return [x,y,theta,v]
 
@@ -114,7 +114,7 @@ if __name__ == "__main__":
         initial_state=[dubins_to_guam_2d([-2000, 0, 0, 100]), dubins_to_guam_2d([-2000, 0, 0, 100])],
         initial_mode=([AgentMode.COC])
     )
-    T = 10
+    T = 100
     Tv = 1
     ts = 0.1
     N = 1
