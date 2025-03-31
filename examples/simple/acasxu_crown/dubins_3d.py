@@ -213,7 +213,7 @@ if __name__ == "__main__":
         initial_state=[[-2001, -10, 999, 0,0, 100], [-1999, 10, 1001, 0,0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 25
+    T = 20
     Tv = 1
     ts = 0.01
     # observation: for Tv = 0.1 and a larger initial set of radius 10 in y dim, the number of 
