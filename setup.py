@@ -26,14 +26,14 @@ with open('auto_LiRPA/__init__.py', encoding = "utf-8") as file:
             version = eval(line.strip().split()[-1])
 
 this_directory = Path(__file__).parent
-long_description = (this_directory / 'README.md').read_text()
+#long_description = (this_directory / 'README.md').read_text()
 
 print(f'Installing auto_LiRPA {version}')
 setup(
     name='auto_LiRPA',
     version=version,
     description='A library for Automatic Linear Relaxation based Perturbation Analysis (LiRPA) on general computational graphs, with a focus on adversarial robustness verification and certification of deep neural networks.',
-    long_description=long_description,
+    #long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/Verified-Intelligence/auto_LiRPA',
     author='Huan Zhang, Zhouxing Shi, Xiangru Zhong, Jorge Chavez, Duo Zhou, Christopher Brix, Keyi Shen, Hongji Xu, Kaidi Xu, Hao Chen, Keyu Lu',
