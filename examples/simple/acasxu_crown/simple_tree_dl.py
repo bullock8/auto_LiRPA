@@ -30,12 +30,12 @@ class TrackMode(Enum):
 
 
 class State:
-    x: float
-    y: float
-    z: float
+    rho: float
     theta: float
     psi: float
-    v: float
+    theta: float
+    v_own: float
+    v_int: float
     agent_mode: AgentMode
     track_mode: TrackMode
 
@@ -141,12 +141,11 @@ def decisionLogic(ego: State, others: List[State]):
     
     assert not (rho <= 50), "Unsafe Separation"
     
-    
-    if rho < 4000 and ego.initial_mode[0] == AgentMode.COC:
+    #next.agent_mode = AgentMode.WR
+    if rho < 50 and ego.agent_mode == AgentMode.WR:
         next.agent_mode = AgentMode.SR
     else:
-        next.agent_mode = AgentMode.COC
-        next.a
+        next.agent_mode = AgentMode.WL
                         
 
     return next

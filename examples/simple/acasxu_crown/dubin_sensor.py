@@ -90,10 +90,10 @@ class DubinSensor:
                 
                 curr_x = state_dict['car1'][0][0]
                 curr_y = state_dict['car1'][0][1]
-                obstacle_x = state_dict['car2'][0][0]
-                obstacle_y = state_dict['car2'][0][1]
                 curr_theta = state_dict['car1'][0][2]
                 curr_v = state_dict['car1'][0][3]
+                obstacle_x = state_dict['car2'][0][0]
+                obstacle_y = state_dict['car2'][0][1]
                 obs_theta = state_dict['car2'][0][2]
                 obs_v = state_dict['car2'][0][3]
                 
@@ -137,6 +137,8 @@ class DubinSensor:
                 cont['ego.psi'] = psi
                 cont['ego.v_own'] = v_own
                 cont['ego.v_int'] = v_int
+                
+                disc['ego.agent_mode'] = state_dict['car1'][1][0]
         
                 ##########
                 # End of new stuff
@@ -155,20 +157,20 @@ class DubinSensor:
                 # lower bound states
                 curr_x_min = state_dict['car1'][0][0][0]
                 curr_y_min = state_dict['car1'][0][0][1]
-                obstacle_x_min = state_dict['car2'][0][0][0]
-                obstacle_y_min = state_dict['car2'][0][0][1]
                 curr_theta_min = state_dict['car1'][0][0][2]
                 curr_v_min = state_dict['car1'][0][0][3]
+                obstacle_x_min = state_dict['car2'][0][0][0]
+                obstacle_y_min = state_dict['car2'][0][0][1]
                 obs_theta_min = state_dict['car2'][0][0][2]
                 obs_v_min = state_dict['car2'][0][0][3]  
                 
                 # upper bound states
                 curr_x_max = state_dict['car1'][0][1][0]
                 curr_y_max = state_dict['car1'][0][1][1]
-                obstacle_x_max = state_dict['car2'][0][1][0]
-                obstacle_y_max = state_dict['car2'][0][1][1]
                 curr_theta_max = state_dict['car1'][0][1][2]
                 curr_v_max = state_dict['car1'][0][1][3]
+                obstacle_x_max = state_dict['car2'][0][1][0]
+                obstacle_y_max = state_dict['car2'][0][1][1]
                 obs_theta_max = state_dict['car2'][0][1][2]
                 obs_v_max = state_dict['car2'][0][1][3]   
                 

@@ -17,6 +17,7 @@ import time
 from dubin_sensor import DubinSensor
 import pyvista as pv
 
+from dubin_sensor import DubinSensor
 
 class AgentMode(Enum):
     COC = auto()
@@ -36,7 +37,7 @@ class TrackMode(Enum):
 
 means_for_scaling = torch.FloatTensor([19791.091, 0.0, 0.0, 650.0, 600.0])
 range_for_scaling = torch.FloatTensor([60261.0, 6.28318530718, 6.28318530718, 1100.0, 1200.0])
-
+'''
 class Model(nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -65,6 +66,7 @@ def get_final_states_sim(n) -> Tuple[List]:
     own_state = n.trace['car1'][-1]
     int_state = n.trace['car2'][-1]
     return own_state, int_state
+'''
 
 if __name__ == "__main__":
     import os
@@ -75,7 +77,6 @@ if __name__ == "__main__":
     
     # Create ego agent
     car = CarAgent('car1', file_name=input_code_name)
-    
     # Create intruder agent
     car2 = NPCAgent('car2')
     scenario = Scenario(ScenarioConfig(parallel=False))
@@ -94,7 +95,7 @@ if __name__ == "__main__":
         initial_state=[[-2000, 0, 0, 100], [-2000, 0, 0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 100
+    T = 10*3
     Tv = 1
     ts = 0.01
     N = 100
@@ -105,9 +106,10 @@ if __name__ == "__main__":
     scenario.set_map
     start = time.perf_counter()
     traces = []
+    print("Simulating...")
     traces_simu = scenario.simulate(T, ts)
     plotter = pv.Plotter()
-    
+    print("Verifying...")
     traces_veri = scenario.verify(T, Tv, ax=plotter)
     '''
     for i in range(N):
