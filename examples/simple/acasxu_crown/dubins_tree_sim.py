@@ -14,6 +14,9 @@ import torch
 from collections import deque
 from torch import nn
 import time
+from dubin_sensor import DubinSensor
+import pyvista as pv
+
 
 class AgentMode(Enum):
     COC = auto()
@@ -68,7 +71,7 @@ if __name__ == "__main__":
     
     # Set decision logic
     script_dir = os.path.realpath(os.path.dirname(__file__))
-    input_code_name = os.path.join(script_dir, "dl_tree_acas.py")
+    input_code_name = os.path.join(script_dir, "simple_tree_dl.py")
     
     # Create ego agent
     car = CarAgent('car1', file_name=input_code_name)
@@ -76,6 +79,7 @@ if __name__ == "__main__":
     # Create intruder agent
     car2 = NPCAgent('car2')
     scenario = Scenario(ScenarioConfig(parallel=False))
+    scenario.set_sensor(DubinSensor())
     
     # Set IC [x, y, theta, velocity], with lower and upper bounds for each
     # and set the initial mode
@@ -102,7 +106,9 @@ if __name__ == "__main__":
     start = time.perf_counter()
     traces = []
     traces_simu = scenario.simulate(T, ts)
-    traces_veri = scenario.verify(T, Tv, ax=None)
+    plotter = pv.Plotter()
+    
+    traces_veri = scenario.verify(T, Tv, ax=plotter)
     '''
     for i in range(N):
         scenario.set_init(
@@ -152,7 +158,7 @@ if __name__ == "__main__":
     #     print(f'Start time: {node.start_time}, Mode: ', node.mode['car1'][0])
     print(f'Total runtime: {time.perf_counter()-start} for {N} simulation(s)')
     fig = go.Figure()
-    fig = reachtube_tree(traces_veri, None, fig, 1, 2)
+    fig = reachtube_tree(traces_veri, None, fig, 1,2)
     #for trace in traces:
     #    fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
     fig.show()

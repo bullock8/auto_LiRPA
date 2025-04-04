@@ -74,7 +74,7 @@ def add_states_3d_ball(cont, disc, thing, val):
 
 
 class DubinSensor:
-    def sense(self, agent: CarAgent, state_dict, lane_map):
+    def sense(self, agent: CarAgent, state_dict, lane_map, dummy_arg):
         len_dict = {}
         cont = {}
         disc = {}
@@ -142,7 +142,7 @@ class DubinSensor:
                 # End of new stuff
                 ##########
         else:
-            if agent.id == 'aircraft1':
+            if agent.id == 'car1':
                 len_dict['others'] = 1 
                 # dist_min, dist_max = get_extreme(
                 #     (state_dict['car'][0][0][1],state_dict['car'][0][0][2],state_dict['car'][0][1][1],state_dict['car'][0][1][2]),
@@ -178,8 +178,8 @@ class DubinSensor:
                 curr_vx_min = curr_v_min * np.min([np.cos(curr_theta_max), np.cos(curr_theta_min)])
                 curr_vy_min = curr_v_min * np.min([np.sin(curr_theta_max), np.sin(curr_theta_min)])
                 
-                obs_vx = obs_v * np.cos(obs_theta)
-                obs_vy = obs_v * np.sin(obs_theta)             
+                #obs_vx = obs_v * np.cos(obs_theta)
+                #obs_vy = obs_v * np.sin(obs_theta)             
                 
                 # Calcs from Stanley Bak (acasxu_closed_loop_sim/acasxu_dubins/acasxu_dubins.py state7_to_state5() function)
                 dy_max = np.max(np.abs([obstacle_y_max - curr_y_min, curr_y_max - obstacle_y_min]))
@@ -199,12 +199,29 @@ class DubinSensor:
                 v_int_min = obs_v_min
                 
                 # Angular ranges
+                sign_dy_max = np.max([obstacle_y_max - curr_y_min, obstacle_y_min - curr_y_max])
+                sign_dx_max = np.max([obstacle_x_max - curr_x_min, obstacle_x_min - curr_x_max])
                 
-                theta_max = np.max([np.arctan2(dy_max, dx_min), np.arctan2(dy_min, dx_max)])
-                theta_min = np.min([np.arctan2(dy_max, dx_min), np.arctan2(dy_min, dx_max)])
+                sign_dy_min = np.min([obstacle_y_max - curr_y_min, obstacle_y_min - curr_y_max])
+                sign_dx_min = np.min([obstacle_x_max - curr_x_min, obstacle_x_min - curr_x_max])
+                
+                theta_max = np.max([np.arctan2(sign_dy_max, sign_dx_min), np.arctan2(sign_dy_min, sign_dx_max), np.arctan2(sign_dy_max, sign_dx_max), np.arctan2(sign_dy_min, sign_dx_min)])
+                theta_min = np.min([np.arctan2(sign_dy_max, sign_dx_min), np.arctan2(sign_dy_min, sign_dx_max), np.arctan2(sign_dy_max, sign_dx_max), np.arctan2(sign_dy_min, sign_dx_min)])
 
                 psi_max = obs_theta_max - curr_theta_min #np.arctan2(obs_vy, obs_vx) - np.arctan2(curr_vy, curr_vx)
                 psi_min = obs_theta_min - curr_theta_max
+                # Wrap psi_max
+                while psi_max < -np.pi:
+                    psi_max += 2 * np.pi
+
+                while psi_max > np.pi:
+                    psi_max -= 2 * np.pi
+                # Wrap psi_min 
+                while psi_min < -np.pi:
+                    psi_min += 2 * np.pi
+
+                while psi_min > np.pi:
+                    psi_min -= 2 * np.pi
                 
                 cont['ego.rho'] = [
                     rho_min, rho_max
