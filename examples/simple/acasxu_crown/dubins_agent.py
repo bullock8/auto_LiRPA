@@ -123,6 +123,8 @@ class CarAgent(BaseAgent):
         # steering = np.clip(steering, -0.61, 0.61)
         deg_to_rad = np.pi/180
         steering = 0
+        
+        print(vehicle_mode)
         if vehicle_mode == "COC":
             steering = 0 # in radians
         elif vehicle_mode == "WL":
@@ -133,6 +135,7 @@ class CarAgent(BaseAgent):
             steering = 3*deg_to_rad
         elif vehicle_mode == "SR":
             steering = -3*deg_to_rad
+        steering = -3 * deg_to_rad
         return steering, a
 
     def TC_simulate(

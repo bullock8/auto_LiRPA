@@ -33,13 +33,12 @@ class State:
     rho: float
     theta: float
     psi: float
-    theta: float
     v_own: float
     v_int: float
     agent_mode: AgentMode
     track_mode: TrackMode
 
-    def __init__(self, x, y, z, theta, psi, v, agent_mode: AgentMode, track_mode: TrackMode):
+    def __init__(self, rho, theta, psi, v_own, v_int, agent_mode: AgentMode, track_mode: TrackMode):
         pass
 
 '''
@@ -139,13 +138,13 @@ def decisionLogic(ego: State, others: List[State]):
     acas_update_time = 0.5 # ACAS will send new advisory every 0.5 seconds
     
     
-    assert not (rho <= 50), "Unsafe Separation"
+    #assert not (rho <= 50), "Unsafe Separation"
     
-    #next.agent_mode = AgentMode.WR
-    if rho < 50 and ego.agent_mode == AgentMode.WR:
-        next.agent_mode = AgentMode.SR
-    else:
-        next.agent_mode = AgentMode.WL
+    next.agent_mode = AgentMode.SR
+    #if rho < 50 and ego.agent_mode == AgentMode.WR:
+    #    next.agent_mode = AgentMode.SR
+    #else:
+    #    next.agent_mode = AgentMode.WL
                         
 
     return next

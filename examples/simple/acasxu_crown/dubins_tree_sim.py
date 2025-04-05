@@ -95,10 +95,10 @@ if __name__ == "__main__":
         initial_state=[[-2000, 0, 0, 100], [-2000, 0, 0, 100]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
-    T = 10*3
+    T = 10*6
     Tv = 1
     ts = 0.01
-    N = 100
+    N = 1
     #models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
     scenario.config.print_level = 0
     scenario.add_agent(car)

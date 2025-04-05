@@ -73,7 +73,7 @@ def add_states_3d_ball(cont, disc, thing, val):
 #         return cont, disc, len_dict
 
 
-class DubinSensor:
+class DubinSensor():
     def sense(self, agent: CarAgent, state_dict, lane_map, dummy_arg):
         len_dict = {}
         cont = {}
@@ -139,6 +139,7 @@ class DubinSensor:
                 cont['ego.v_int'] = v_int
                 
                 disc['ego.agent_mode'] = state_dict['car1'][1][0]
+                disc['ego.track_mode'] = state_dict['car1'][1][1]
         
                 ##########
                 # End of new stuff
@@ -245,6 +246,7 @@ class DubinSensor:
                 ]
                 
                 disc['ego.agent_mode'] = state_dict['car1'][1][0]
+                disc['ego.track_mode'] = state_dict['car1'][1][1]
                 '''if dist_min<self.sensor_distance:
                     cont['other.dist'] = [
                         dist_min, dist_max
