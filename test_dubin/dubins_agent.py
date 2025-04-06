@@ -26,7 +26,7 @@ class NPCAgent(BaseAgent):
         delta, a = u
         x_dot = v * np.cos(theta + delta)
         y_dot = v * np.sin(theta + delta)
-        theta_dot = v / 100 * np.sin(delta)
+        theta_dot = v / 1.75 * np.sin(delta)
         v_dot = a
         dots = [x_dot, y_dot, theta_dot, v_dot]
         if len(state) == 4:
@@ -38,6 +38,7 @@ class NPCAgent(BaseAgent):
         current state using a Stanley controller-like rule"""
         x, y, theta, v = state[:4]
         vehicle_mode = mode[0]
+        # vehicle_lane = mode[1]
         vehicle_pos = np.array([x, y])
         # d = -lane_map.get_lateral_distance(vehicle_lane, vehicle_pos)
         # psi = lane_map.get_lane_heading(vehicle_lane, vehicle_pos) - theta
@@ -91,7 +92,7 @@ class CarAgent(BaseAgent):
         delta, a = u
         x_dot = v * np.cos(theta + delta)
         y_dot = v * np.sin(theta + delta)
-        theta_dot = v / 100 * np.sin(delta)
+        theta_dot = v / 1.75 * np.sin(delta)
         v_dot = a
         return [x_dot, y_dot, theta_dot, v_dot]
 
@@ -121,8 +122,6 @@ class CarAgent(BaseAgent):
 
         # steering = np.clip(steering, -0.61, 0.61)
         deg_to_rad = np.pi/180
-        print(vehicle_mode)
-        #steering = 0
         if vehicle_mode == "COC":
             steering = 0 # in radians
         elif vehicle_mode == "WL":
@@ -239,7 +238,7 @@ class CarAgentSwitch2(CarAgent):
 
     def action_handler(self, mode: List[str], state, lane_map: LaneMap) -> Tuple[float, float]:
         x, y, theta, v, _ = state
-        vehicle_mode, vehicle_lane = mode
+        vehicle_mode = mode
         vehicle_pos = np.array([x, y])
         a = 0
         lane_width = lane_map.get_lane_width(vehicle_lane)

@@ -36,9 +36,9 @@ class State:
     v_own: float
     v_int: float
     agent_mode: AgentMode
-    track_mode: TrackMode
+    #track_mode: TrackMode
 
-    def __init__(self, rho, theta, psi, v_own, v_int, agent_mode: AgentMode, track_mode: TrackMode):
+    def __init__(self, rho, theta, psi, v_own, v_int, agent_mode: AgentMode):
         pass
 
 '''

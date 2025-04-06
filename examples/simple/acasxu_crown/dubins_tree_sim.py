@@ -17,7 +17,6 @@ import time
 from dubin_sensor import DubinSensor
 import pyvista as pv
 
-from dubin_sensor import DubinSensor
 
 class AgentMode(Enum):
     COC = auto()
@@ -76,11 +75,12 @@ if __name__ == "__main__":
     input_code_name = os.path.join(script_dir, "simple_tree_dl.py")
     
     # Create ego agent
+    print(f"input code: {input_code_name}")
     car = CarAgent('car1', file_name=input_code_name)
     # Create intruder agent
     car2 = NPCAgent('car2')
     scenario = Scenario(ScenarioConfig(parallel=False))
-    scenario.set_sensor(DubinSensor())
+    #scenario.set_sensor(DubinSensor())
     
     # Set IC [x, y, theta, velocity], with lower and upper bounds for each
     # and set the initial mode
@@ -88,22 +88,22 @@ if __name__ == "__main__":
         # initial_state=[[0, -0.5, 0, 1.0], [0.01, 0.5, 0, 1.0]],
         # initial_state=[[0, -1000, np.pi/3, 100], [0, -1000, np.pi/3, 100]],
         initial_state=[[-100, -1100, np.pi/3, 100], [100, -900, np.pi/3, 100]],
-        initial_mode=(AgentMode.COC, TrackMode.T1)
+        initial_mode=(AgentMode.COC,)
     )
     car2.set_initial(
         # initial_state=[[15, 15, 0, 0.5], [15, 15, 0, 0.5]],
         initial_state=[[-2000, 0, 0, 100], [-2000, 0, 0, 100]],
-        initial_mode=(AgentMode.COC, TrackMode.T1)
+        initial_mode=(AgentMode.COC,)
     )
-    T = 10*6
+    T = 20
     Tv = 1
     ts = 0.01
     N = 1
     #models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
-    scenario.config.print_level = 0
+    #scenario.config.print_level = 0
     scenario.add_agent(car)
     scenario.add_agent(car2)
-    scenario.set_map
+    #scenario.set_map
     start = time.perf_counter()
     traces = []
     print("Simulating...")
