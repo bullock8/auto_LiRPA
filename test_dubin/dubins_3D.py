@@ -1,4 +1,4 @@
-from dubins_agent import CarAgent, NPCAgent
+from dubins_3d_agent import CarAgent, NPCAgent
 from verse.map.example_map.map_tacas import M1
 from verse.scenario.scenario import Benchmark
 from enum import Enum, auto
@@ -12,7 +12,7 @@ import torch
 from verse.utils.utils import wrap_to_pi
 import pyvista as pv
 
-from dubin_sensor import DubinSensor
+from dubin_sensor_3D import DubinSensor
 
 class AgentMode(Enum):
     COC = auto()
@@ -46,11 +46,11 @@ if __name__ == "__main__":
     scenario = Scenario(ScenarioConfig(parallel=False))
     scenario.set_sensor(DubinSensor())
     car.set_initial(
-                initial_state=[[-100, -1100, np.pi/3, 100, 0, 0], [100, -900, np.pi/3, 100, 0, 0]],
+                initial_state=[[-1, -1010, -1, np.pi/3, np.pi/6, 100], [1, -990, 1, np.pi/3, np.pi/6, 100]],
         initial_mode=(AgentMode.COC, )
     )
     car2.set_initial(
-            initial_state=[[-2000, 0, 0, 100, 0, 0], [-2000, 0, 0, 100, 0, 0]],
+            initial_state=[[-2001, -10, 999, 0,0, 100], [-1999, 10, 1001, 0,0, 100]],
         initial_mode=(AgentMode.COC, )
     )
     scenario.add_agent(car)
