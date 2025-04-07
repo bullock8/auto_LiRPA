@@ -97,6 +97,8 @@ class DubinSensor():
                 obs_theta = state_dict['car2'][0][2]
                 obs_v = state_dict['car2'][0][3]
                 
+                #ego_time = state_dict['car1'][0][4]
+                
                 curr_vx = curr_v * np.cos(curr_theta)
                 curr_vy = curr_v * np.sin(curr_theta)
                 
@@ -137,6 +139,7 @@ class DubinSensor():
                 cont['ego.psi'] = psi
                 cont['ego.v_own'] = v_own
                 cont['ego.v_int'] = v_int
+                #cont['ego.timer'] = ego_time
                 
                 disc['ego.agent_mode'] = state_dict['car1'][1][0]
                 #disc['ego.track_mode'] = state_dict['car1'][1][1]
@@ -164,6 +167,9 @@ class DubinSensor():
                 obstacle_y_min = state_dict['car2'][0][0][1]
                 obs_theta_min = state_dict['car2'][0][0][2]
                 obs_v_min = state_dict['car2'][0][0][3]  
+                
+                # Timer variable, no uncertainty
+                #ego_time = state_dict['car1'][0][0][4]
                 
                 # upper bound states
                 curr_x_max = state_dict['car1'][0][1][0]
@@ -244,6 +250,8 @@ class DubinSensor():
                 cont['ego.v_int'] = [
                     v_int_min, v_int_max#state_dict['car'][0][0][4], state_dict['car'][0][1][4]
                 ]
+                
+                #cont['ego.timer'] = [ego_time, ego_time]
                 
                 disc['ego.agent_mode'] = state_dict['car1'][1][0]
                 #disc['ego.track_mode'] = state_dict['car1'][1][1]

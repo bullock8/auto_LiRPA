@@ -46,17 +46,17 @@ if __name__ == "__main__":
     scenario = Scenario(ScenarioConfig(parallel=False))
     scenario.set_sensor(DubinSensor())
     car.set_initial(
-                initial_state=[[0, -0.5, 0, 1.0], [0.01, 0.5, 0, 1.0]],
+                initial_state=[[-100, -1100, np.pi/3, 100, 0], [100, -900, np.pi/3, 100, 0]],
         initial_mode=(AgentMode.SR, )
     )
     car2.set_initial(
-            initial_state=[[15, -0.3, 0, 0.5], [15, 0.3, 0, 0.5]],
+            initial_state=[[-2000, 0, 0, 100, 0], [-2000, 0, 0, 100, 0]],
         initial_mode=(AgentMode.COC, )
     )
     scenario.add_agent(car)
     scenario.add_agent(car2)
     # trace = scenario.simulate()
     plotter = pv.Plotter()
-    trace = scenario.verify(2,0.1, plotter) # increasing ts to 0.1 to increase learning speed, do the same for dryvr2
+    trace = scenario.verify(20,1, plotter) # increasing ts to 0.1 to increase learning speed, do the same for dryvr2
     fig = reachtube_tree(trace) 
     fig.show() 

@@ -26,10 +26,11 @@ class NPCAgent(BaseAgent):
         delta, a = u
         x_dot = v * np.cos(theta + delta)
         y_dot = v * np.sin(theta + delta)
-        theta_dot = v / 1.75 * np.sin(delta)
+        theta_dot = v / 100 * np.sin(delta)
         v_dot = a
-        dots = [x_dot, y_dot, theta_dot, v_dot]
-        if len(state) == 4:
+        time_dot = 1
+        dots = [x_dot, y_dot, theta_dot, v_dot, time_dot]
+        if len(state) == 5:
             return dots
         return dots + [1]
 
@@ -88,16 +89,17 @@ class CarAgent(BaseAgent):
 
     @staticmethod
     def dynamic(t, state, u):
-        x, y, theta, v = state
+        x, y, theta, v = state[0:4]
         delta, a = u
         x_dot = v * np.cos(theta + delta)
         y_dot = v * np.sin(theta + delta)
-        theta_dot = v / 1.75 * np.sin(delta)
+        theta_dot = v / 100 * np.sin(delta)
         v_dot = a
-        return [x_dot, y_dot, theta_dot, v_dot]
+        time_dot = 1
+        return [x_dot, y_dot, theta_dot, v_dot, time_dot]
 
     def action_handler(self, mode: List[str], state, lane_map: LaneMap) -> Tuple[float, float]:
-        x, y, theta, v = state
+        x, y, theta, v = state[0:4]
         vehicle_mode = mode[0]
         vehicle_pos = np.array([x, y])
         a = 0

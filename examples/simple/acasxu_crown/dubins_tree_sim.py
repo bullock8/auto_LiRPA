@@ -95,9 +95,9 @@ if __name__ == "__main__":
         initial_state=[[-2000, 0, 0, 100], [-2000, 0, 0, 100]],
         initial_mode=(AgentMode.COC,)
     )
-    T = 20
-    Tv = 1
-    ts = 0.01
+    T = 2
+    Tv = 0.1
+    ts = 0.1
     N = 1
     #models = [torch.load(f"./examples/simple/acasxu_crown/ACASXU_run2a_{net + 1}_1_batch_2000.pth") for net in range(5)]
     #scenario.config.print_level = 0
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     #     print(f'Start time: {node.start_time}, Mode: ', node.mode['car1'][0])
     print(f'Total runtime: {time.perf_counter()-start} for {N} simulation(s)')
     fig = go.Figure()
-    fig = reachtube_tree(traces_veri, None, fig, 1,2)
+    fig = reachtube_tree(traces_veri)#, None, fig, 1,2)
     #for trace in traces:
     #    fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
     fig.show()
