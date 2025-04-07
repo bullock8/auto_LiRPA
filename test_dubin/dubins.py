@@ -40,14 +40,14 @@ def get_acas_state(own_state: List[float], int_state: List[float]) -> torch.Tens
 if __name__ == "__main__":
     import os
     script_dir = os.path.realpath(os.path.dirname(__file__))
-    input_code_name = os.path.join(script_dir, "controller.py")
+    input_code_name = os.path.join(script_dir, "controller_v2.py")
     car = CarAgent('car1', file_name=input_code_name)
     car2 = NPCAgent('car2')
     scenario = Scenario(ScenarioConfig(parallel=False))
     scenario.set_sensor(DubinSensor())
     car.set_initial(
-                initial_state=[[-100, -1020, np.pi/3, 100, 0, 0], [100, -980, np.pi/3, 100, 0, 0]],
-        initial_mode=(AgentMode.SR, )
+                initial_state=[[-100, -1100, np.pi/2, 100, 0, 0], [100, -900, np.pi/2, 100, 0, 0]],
+        initial_mode=(AgentMode.COC, )
     )
     car2.set_initial(
             initial_state=[[-2000, 0, 0, 100, 0, 0], [-2000, 0, 0, 100, 0, 0]],
@@ -55,8 +55,8 @@ if __name__ == "__main__":
     )
     scenario.add_agent(car)
     scenario.add_agent(car2)
-    # trace = scenario.simulate()
+    #trace = scenario.simulate(4, 1)
     plotter = pv.Plotter()
-    trace = scenario.verify(20,1, plotter) # increasing ts to 0.1 to increase learning speed, do the same for dryvr2
+    trace = scenario.verify(20, 1, plotter) # increasing ts to 0.1 to increase learning speed, do the same for dryvr2
     fig = reachtube_tree(trace) 
     fig.show() 

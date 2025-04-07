@@ -46,7 +46,7 @@ class State:
     def __init__(self, rho, theta, psi, v_own, v_int, agent_mode: AgentMode):#__init__(self, x, y, theta, v, agent_mode: AgentMode):
         pass
 
-'''
+
 def decisionLogic(ego: State, others: List[State]):
     output = copy.deepcopy(ego)
     # assert not vehicle_close(ego, others)
@@ -65,7 +65,7 @@ def decisionLogic(ego: State, others: List[State]):
     theta = ego.theta
     psi = ego.psi
     
-    acas_update_time = 1.9
+    acas_update_time = 3.9
     
     # Variation that takes 6 min to run
     if ego.timer >= acas_update_time:
@@ -865,3 +865,4 @@ def decisionLogic(ego: State, others: List[State]):
                         next.timer = 0
 
     return next
+'''

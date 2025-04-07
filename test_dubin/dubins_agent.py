@@ -67,6 +67,8 @@ class NPCAgent(BaseAgent):
                 init[3] = 0
             trace[i + 1, 0] = time_step * (i + 1)
             trace[i + 1, 1:] = init
+            trace[i + 1, 5] = time_step * (i + 1)
+            trace[i + 1, 6] = time_step * (i + 1)
         return trace
 
 
@@ -102,6 +104,7 @@ class CarAgent(BaseAgent):
         x, y, theta, v = state[0:4]
         vehicle_mode = mode[0]
         vehicle_pos = np.array([x, y])
+        #print(f"time: {state[4]}")
         a = 0
         # lane_width = lane_map.get_lane_width(vehicle_lane) 
         # d = -lane_map.get_lateral_distance(vehicle_lane, vehicle_pos) # NoneType error here for some reason
@@ -154,6 +157,8 @@ class CarAgent(BaseAgent):
                 init[3] = 0
             trace[i + 1, 0] = time_step * (i + 1)
             trace[i + 1, 1:] = init
+            trace[i + 1, 5] = time_step * (i + 1)
+            trace[i + 1, 6] = time_step * (i + 1)
         return trace
 
 

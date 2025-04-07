@@ -88,16 +88,16 @@ class DubinSensor():
                 # New stuff
                 ###########
                 
-                curr_x = state_dict['car1'][0][0]
-                curr_y = state_dict['car1'][0][1]
-                curr_theta = state_dict['car1'][0][2]
-                curr_v = state_dict['car1'][0][3]
-                obstacle_x = state_dict['car2'][0][0]
-                obstacle_y = state_dict['car2'][0][1]
-                obs_theta = state_dict['car2'][0][2]
-                obs_v = state_dict['car2'][0][3]
+                curr_x = state_dict['car1'][0][1]
+                curr_y = state_dict['car1'][0][2]
+                curr_theta = state_dict['car1'][0][3]
+                curr_v = state_dict['car1'][0][4]
+                obstacle_x = state_dict['car2'][0][1]
+                obstacle_y = state_dict['car2'][0][2]
+                obs_theta = state_dict['car2'][0][3]
+                obs_v = state_dict['car2'][0][4]
                 
-                ego_time = state_dict['car1'][0][4]
+                ego_time = state_dict['car1'][0][5]
                 
                 curr_vx = curr_v * np.cos(curr_theta)
                 curr_vy = curr_v * np.sin(curr_theta)
@@ -120,7 +120,7 @@ class DubinSensor():
                 psi = np.arctan2(obs_vy, obs_vx) - np.arctan2(curr_vy, curr_vx)
                     
                 ## Ensure that angular states are between -pi and pi
-                while theta < -np.pi:
+                '''while theta < -np.pi:
                     theta += 2 * np.pi
 
                 while theta > np.pi:
@@ -130,7 +130,11 @@ class DubinSensor():
                     psi += 2 * np.pi
 
                 while psi > np.pi:
-                    psi -= 2 * np.pi
+                    psi -= 2 * np.pi'''
+                
+                # make sure theta and psi are within [-pi, pi]
+                theta = np.arctan2(np.sin(theta),np.cos(theta))
+                psi = np.arctan2(np.sin(psi),np.cos(psi))
 
                 #state = [rho, theta, psi, v_own, v_int]
                     
@@ -139,7 +143,7 @@ class DubinSensor():
                 cont['ego.psi'] = psi
                 cont['ego.v_own'] = v_own
                 cont['ego.v_int'] = v_int
-                cont['ego.timer'] = ego_time
+                cont['ego.timer_DL'] = ego_time
                 
                 disc['ego.agent_mode'] = state_dict['car1'][1][0]
                 #disc['ego.track_mode'] = state_dict['car1'][1][1]
@@ -159,27 +163,27 @@ class DubinSensor():
                 # New Stuff
                 #########
                 # lower bound states
-                curr_x_min = state_dict['car1'][0][0][0]
-                curr_y_min = state_dict['car1'][0][0][1]
-                curr_theta_min = state_dict['car1'][0][0][2]
-                curr_v_min = state_dict['car1'][0][0][3]
-                obstacle_x_min = state_dict['car2'][0][0][0]
-                obstacle_y_min = state_dict['car2'][0][0][1]
-                obs_theta_min = state_dict['car2'][0][0][2]
-                obs_v_min = state_dict['car2'][0][0][3]  
+                curr_x_min = state_dict['car1'][0][0][1]
+                curr_y_min = state_dict['car1'][0][0][2]
+                curr_theta_min = state_dict['car1'][0][0][3]
+                curr_v_min = state_dict['car1'][0][0][4]
+                obstacle_x_min = state_dict['car2'][0][0][1]
+                obstacle_y_min = state_dict['car2'][0][0][2]
+                obs_theta_min = state_dict['car2'][0][0][3]
+                obs_v_min = state_dict['car2'][0][0][4]  
                 
                 # Timer variable, no uncertainty
-                ego_time = state_dict['car1'][0][0][4]
+                ego_time = state_dict['car1'][0][0][5] # update
                 
                 # upper bound states
-                curr_x_max = state_dict['car1'][0][1][0]
-                curr_y_max = state_dict['car1'][0][1][1]
-                curr_theta_max = state_dict['car1'][0][1][2]
-                curr_v_max = state_dict['car1'][0][1][3]
-                obstacle_x_max = state_dict['car2'][0][1][0]
-                obstacle_y_max = state_dict['car2'][0][1][1]
-                obs_theta_max = state_dict['car2'][0][1][2]
-                obs_v_max = state_dict['car2'][0][1][3]   
+                curr_x_max = state_dict['car1'][0][1][1]
+                curr_y_max = state_dict['car1'][0][1][2]
+                curr_theta_max = state_dict['car1'][0][1][3]
+                curr_v_max = state_dict['car1'][0][1][4]
+                obstacle_x_max = state_dict['car2'][0][1][1]
+                obstacle_y_max = state_dict['car2'][0][1][2]
+                obs_theta_max = state_dict['car2'][0][1][3]
+                obs_v_max = state_dict['car2'][0][1][4]   
                 
                 curr_vx_max = curr_v_max * np.max([np.cos(curr_theta_max), np.cos(curr_theta_min)])
                 curr_vy_max = curr_v_max * np.max([np.sin(curr_theta_max), np.sin(curr_theta_min)])
@@ -194,8 +198,8 @@ class DubinSensor():
                 dy_max = np.max(np.abs([obstacle_y_max - curr_y_min, curr_y_max - obstacle_y_min]))
                 dx_max = np.max(np.abs([obstacle_x_max - curr_x_min, curr_x_max - obstacle_x_min]))
                 
-                dy_min = np.max(np.abs([obstacle_y_max - curr_y_min, curr_y_max - obstacle_y_min]))
-                dx_min = np.max(np.abs([obstacle_x_max - curr_x_min, curr_x_max - obstacle_x_min]))
+                dy_min = np.min(np.abs([obstacle_y_max - curr_y_min, curr_y_max - obstacle_y_min]))
+                dx_min = np.min(np.abs([obstacle_x_max - curr_x_min, curr_x_max - obstacle_x_min]))
                 
                 rho_max = np.sqrt(dx_max**2 + dy_max**2) # Just considering 2-D distance right now (neglect z)
                 rho_min = np.sqrt(dx_min**2 + dy_min**2)
@@ -220,7 +224,7 @@ class DubinSensor():
                 psi_max = obs_theta_max - curr_theta_min #np.arctan2(obs_vy, obs_vx) - np.arctan2(curr_vy, curr_vx)
                 psi_min = obs_theta_min - curr_theta_max
                 # Wrap psi_max
-                while psi_max < -np.pi:
+                '''while psi_max < -np.pi:
                     psi_max += 2 * np.pi
 
                 while psi_max > np.pi:
@@ -230,7 +234,10 @@ class DubinSensor():
                     psi_min += 2 * np.pi
 
                 while psi_min > np.pi:
-                    psi_min -= 2 * np.pi
+                    psi_min -= 2 * np.pi'''
+                
+                psi_max = np.arctan2(np.sin(psi_max),np.cos(psi_max))
+                psi_min = np.arctan2(np.sin(psi_min),np.cos(psi_min))
                 
                 cont['ego.rho'] = [
                     rho_min, rho_max
@@ -251,7 +258,14 @@ class DubinSensor():
                     v_int_min, v_int_max#state_dict['car'][0][0][4], state_dict['car'][0][1][4]
                 ]
                 
-                cont['ego.timer'] = [ego_time, ego_time]
+                
+                '''transition_sample_period = 3.9
+                if abs((ego_time / transition_sample_period) - round(ego_time / transition_sample_period)) < 0.02 and ego_time > 0.05:
+                    transition_flag = 1
+                else:
+                    transition_flag = 0'''
+                cont['ego.timer_DL'] = [ego_time, ego_time]
+                print(f"sensor ego r: {rho_min}\nsensor ego t:{ego_time}")
                 
                 disc['ego.agent_mode'] = state_dict['car1'][1][0]
                 #disc['ego.track_mode'] = state_dict['car1'][1][1]
@@ -327,7 +341,7 @@ class GUAMSensor:
                 
                 disc['ego.agent_mode'] = state_dict["aircraft1"][1][0]
                 #cont['ego.transition_flag'] = transition_flag
-                cont['ego.timer'] = ego_time
+                cont['ego.timer_DL'] = ego_time
                 # disc['ego.transition_flag'] = transition_flag
                 
                 # Calcs from Stanley Bak (acasxu_closed_loop_sim/acasxu_dubins/acasxu_dubins.py state7_to_state5() function)
