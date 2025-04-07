@@ -46,11 +46,11 @@ if __name__ == "__main__":
     scenario = Scenario(ScenarioConfig(parallel=False))
     scenario.set_sensor(DubinSensor())
     car.set_initial(
-                initial_state=[[-100, -1100, np.pi/3, 100, 0], [100, -900, np.pi/3, 100, 0]],
+                initial_state=[[-100, -1020, np.pi/3, 100, 0, 0], [100, -980, np.pi/3, 100, 0, 0]],
         initial_mode=(AgentMode.SR, )
     )
     car2.set_initial(
-            initial_state=[[-2000, 0, 0, 100, 0], [-2000, 0, 0, 100, 0]],
+            initial_state=[[-2000, 0, 0, 100, 0, 0], [-2000, 0, 0, 100, 0, 0]],
         initial_mode=(AgentMode.COC, )
     )
     scenario.add_agent(car)

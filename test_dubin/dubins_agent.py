@@ -29,8 +29,8 @@ class NPCAgent(BaseAgent):
         theta_dot = v / 100 * np.sin(delta)
         v_dot = a
         time_dot = 1
-        dots = [x_dot, y_dot, theta_dot, v_dot, time_dot]
-        if len(state) == 5:
+        dots = [x_dot, y_dot, theta_dot, v_dot, time_dot, time_dot]
+        if len(state) == 6:
             return dots
         return dots + [1]
 
@@ -96,7 +96,7 @@ class CarAgent(BaseAgent):
         theta_dot = v / 100 * np.sin(delta)
         v_dot = a
         time_dot = 1
-        return [x_dot, y_dot, theta_dot, v_dot, time_dot]
+        return [x_dot, y_dot, theta_dot, v_dot, time_dot, time_dot]
 
     def action_handler(self, mode: List[str], state, lane_map: LaneMap) -> Tuple[float, float]:
         x, y, theta, v = state[0:4]
