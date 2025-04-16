@@ -30,15 +30,16 @@ class NPCAgent(BaseAgent):
         theta_dot = v / 100 * np.sin(delta)
         psi_dot = p
         v_dot = a
-        dots = [x_dot, y_dot, z_dot, theta_dot, psi_dot, v_dot]
-        if len(state) == 6:
+        time_dot = 1
+        dots = [x_dot, y_dot, z_dot, theta_dot, psi_dot, v_dot, time_dot]
+        if len(state) == 7:
             return dots
         return dots + [1]
 
     def action_handler(self, mode, state, lane_map: LaneMap) -> Tuple[float, float]:
         """Computes steering and acceleration based on current lane, target lane and
         current state using a Stanley controller-like rule"""
-        x, y, z, theta, psi, v = state
+        x, y, z, theta, psi, v = state[0:6]
         vehicle_mode = mode[0]
         vehicle_lane = mode[1]
         vehicle_pos = np.array([x, y])
@@ -69,6 +70,7 @@ class NPCAgent(BaseAgent):
                 init[3] = 0
             trace[i + 1, 0] = time_step * (i + 1)
             trace[i + 1, 1:] = init
+            trace[i + 1, 7] = time_step * (i + 1)
         return trace
 
 
@@ -91,7 +93,7 @@ class CarAgent(BaseAgent):
 
     @staticmethod
     def dynamic(t, state, u):
-        x, y, z, theta, psi, v = state
+        x, y, z, theta, psi, v = state[0:6]
         delta, p, a = u
         x_dot = v * np.cos(theta + delta) * np.cos(psi)
         y_dot = v * np.sin(theta + delta) * np.cos(psi)
@@ -99,10 +101,11 @@ class CarAgent(BaseAgent):
         theta_dot = v / 100 * np.sin(delta)
         psi_dot = p 
         v_dot = a
-        return [x_dot, y_dot, z_dot, theta_dot, psi_dot, v_dot]
+        time_dot = 1
+        return [x_dot, y_dot, z_dot, theta_dot, psi_dot, v_dot, time_dot]
 
     def action_handler(self, mode: List[str], state, lane_map: LaneMap) -> Tuple[float, float]:
-        x, y, z, theta, psi, v = state
+        x, y, z, theta, psi, v = state[0:6]
         vehicle_mode, vehicle_lane = mode
         vehicle_pos = np.array([x, y])
         a = 0
@@ -159,6 +162,7 @@ class CarAgent(BaseAgent):
                 init[-1] = 0
             trace[i + 1, 0] = time_step * (i + 1)
             trace[i + 1, 1:] = init
+            trace[i + 1, 7] = time_step * (i + 1)
         return trace
 
 

@@ -40,6 +40,8 @@ class State:
     psi: float
     v_own: float
     v_int: float
+    dummy1: float
+    #dummy2: float
     timer_DL: float
     agent_mode: AgentMode
 
@@ -53,20 +55,11 @@ def decisionLogic(ego: State, others: List[State]):
     theta = ego.theta
     psi = ego.psi
     
-    pi = 3.14
-    
     acas_update_time = 3.9
     
     # Variation that takes 6 min to run
     if ego.timer_DL >= acas_update_time:
-        # Constrain angles to [-pi, pi]
-        '''if theta < pi or theta > pi:
-            scale_factor = (theta + pi) // (2 * pi)
-            theta = theta - scale_factor * 2 * pi
-            
-        if psi < pi or psi > pi:
-            scale_factor = (psi + pi) // (2 * pi)
-            psi = psi - scale_factor * 2 * pi'''
+        # Update timer
         
         if ego.agent_mode == AgentMode.COC:  # advisory 0
             if rho <= 15139.2:

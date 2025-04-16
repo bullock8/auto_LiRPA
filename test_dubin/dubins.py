@@ -46,7 +46,7 @@ if __name__ == "__main__":
     scenario = Scenario(ScenarioConfig(parallel=False))
     scenario.set_sensor(DubinSensor())
     car.set_initial(
-                initial_state=[[-100, -1100, np.pi/3, 100, 0, 0], [100, -900, np.pi/3, 100, 0, 0]],
+                initial_state=[[-100, -1100, np.pi/2, 100, 0, 0], [100, -900, np.pi/2, 100, 0, 0]],
         initial_mode=(AgentMode.COC, )
     )
     car2.set_initial(
@@ -56,6 +56,7 @@ if __name__ == "__main__":
     scenario.add_agent(car)
     scenario.add_agent(car2)
     #trace = scenario.simulate(4, 1)
+    #fig = simulation_tree(trace)
     plotter = pv.Plotter()
     trace = scenario.verify(20, 1, plotter) # increasing ts to 0.1 to increase learning speed, do the same for dryvr2
     fig = reachtube_tree(trace) 

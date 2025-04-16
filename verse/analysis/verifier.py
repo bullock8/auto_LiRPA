@@ -414,7 +414,7 @@ class Verifier:
         remain_time: float,
         consts: ReachConsts,
         max_height: int,
-        ax: pv.Plotter,
+        ax: pv.Plotter = None,
 
         params={},
     ) -> Tuple[int, int, List[AnalysisTreeNode], Dict[str, TraceType], list]:
@@ -584,34 +584,36 @@ class Verifier:
                     node.trace[agent] = node.trace[agent][: (idx + 1)]
 
             #print("writing data")
-            data = []
-            ids = []
-            colors = []
-            for agent_id in node.trace:
-                ids.append(agent_id)
-                if agent_id not in color_map:
-                    color_map[agent_id] = len(color_map) +1
+            
+            if ax is not None:
+                data = []
+                ids = []
+                colors = []
+                for agent_id in node.trace:
+                    ids.append(agent_id)
+                    if agent_id not in color_map:
+                        color_map[agent_id] = len(color_map) +1
 
-            l  = len(node.trace[ids[0]])
-            for i in range(0, l, 2):
-                for agent_id in ids:
-                    trace = node.trace[agent_id]
-                    data.append([trace[i], trace[i + 1]])
-                    colors.append(int_to_color[color_map[agent_id]])
-            print("COLORS", colors)
+                l  = len(node.trace[ids[0]])
+                for i in range(0, l, 2):
+                    for agent_id in ids:
+                        trace = node.trace[agent_id]
+                        data.append([trace[i], trace[i + 1]])
+                        colors.append(int_to_color[color_map[agent_id]])
+                print("COLORS", colors)
 
 
-            plot3dReachtubeSingle(data, 0, 1, 2, ax, colors,  edge=True)
-            #ax.render()
-            return (
-                node.id,
-                later,
-                next_nodes,
-                node.trace,
-                asserts,
-                cache_tube_updates,
-                cache_trans_tube_updates,
-            )
+                plot3dReachtubeSingle(data, 0, 1, 2, ax, colors,  edge=True)
+                #ax.render()
+                return (
+                    node.id,
+                    later,
+                    next_nodes,
+                    node.trace,
+                    asserts,
+                    cache_tube_updates,
+                    cache_trans_tube_updates,
+                )
 
         # pp(("transitions:", [(t[0], t[2]) for t in all_possible_transitions]))
         transit_map = {

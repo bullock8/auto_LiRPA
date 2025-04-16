@@ -3,6 +3,7 @@ from verse.map.example_map.map_tacas import M1
 from verse.scenario.scenario import Benchmark
 from enum import Enum, auto
 from verse.plotter.plotter2D import *
+from verse.plotter.plotter3D_new import *
 from verse import Scenario, ScenarioConfig
 from verse.analysis.verifier import ReachabilityMethod
 import sys
@@ -40,23 +41,28 @@ def get_acas_state(own_state: List[float], int_state: List[float]) -> torch.Tens
 if __name__ == "__main__":
     import os
     script_dir = os.path.realpath(os.path.dirname(__file__))
-    input_code_name = os.path.join(script_dir, "controller_v2.py")
+    input_code_name = os.path.join(script_dir, "controller_v2_3D.py")
     car = CarAgent('car1', file_name=input_code_name)
     car2 = NPCAgent('car2')
     scenario = Scenario(ScenarioConfig(parallel=False))
+    scenario.config.print_level = 0
+    scenario.config.reachability_method = ReachabilityMethod.DRYVR_DISC
     scenario.set_sensor(DubinSensor())
     car.set_initial(
-                initial_state=[[-1, -1010, -1, np.pi/3, np.pi/6, 100], [1, -990, 1, np.pi/3, np.pi/6, 100]],
-        initial_mode=(AgentMode.COC, )
+                initial_state=[[-1, -1010, -1, np.pi/3, np.pi/6, 100, 0], [1, -990, 1, np.pi/3, np.pi/6, 100, 0]],
+        initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
-            initial_state=[[-2001, -10, 999, 0,0, 100], [-1999, 10, 1001, 0,0, 100]],
-        initial_mode=(AgentMode.COC, )
+            initial_state=[[-2001, -10, 999, 0,0, 100, 0], [-1999, 10, 1001, 0,0, 100, 0]],
+        initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     scenario.add_agent(car)
     scenario.add_agent(car2)
     #trace = scenario.simulate(4, 1)
     plotter = pv.Plotter()
     trace = scenario.verify(20, 1, plotter) # increasing ts to 0.1 to increase learning speed, do the same for dryvr2
-    fig = reachtube_tree(trace) 
-    fig.show() 
+    fig = go.Figure()
+    # fig = simulation_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
+    # fig = reachtube_tree(trace, None, fig, 1, 2, [1, 2], "fill", "trace")
+    fig = reachtube_tree_3d(trace, fig,1,'x', 2,'y',3,'z')
+    fig.show()

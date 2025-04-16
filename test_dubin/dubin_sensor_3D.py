@@ -90,14 +90,14 @@ class DubinSensor():
                 
                 curr_x = state_dict['car1'][0][1]
                 curr_y = state_dict['car1'][0][2]
-                curr_theta = state_dict['car1'][0][3]
-                curr_v = state_dict['car1'][0][4]
+                curr_theta = state_dict['car1'][0][4]
+                curr_v = state_dict['car1'][0][6]
                 obstacle_x = state_dict['car2'][0][1]
                 obstacle_y = state_dict['car2'][0][2]
-                obs_theta = state_dict['car2'][0][3]
-                obs_v = state_dict['car2'][0][4]
+                obs_theta = state_dict['car2'][0][4]
+                obs_v = state_dict['car2'][0][6]
                 
-                ego_time = state_dict['car1'][0][5]
+                ego_time = state_dict['car1'][0][7]
                 
                 curr_vx = curr_v * np.cos(curr_theta)
                 curr_vy = curr_v * np.sin(curr_theta)
@@ -165,25 +165,25 @@ class DubinSensor():
                 # lower bound states
                 curr_x_min = state_dict['car1'][0][0][1]
                 curr_y_min = state_dict['car1'][0][0][2]
-                curr_theta_min = state_dict['car1'][0][0][3]
-                curr_v_min = state_dict['car1'][0][0][4]
+                curr_theta_min = state_dict['car1'][0][0][4]
+                curr_v_min = state_dict['car1'][0][0][6]
                 obstacle_x_min = state_dict['car2'][0][0][1]
                 obstacle_y_min = state_dict['car2'][0][0][2]
-                obs_theta_min = state_dict['car2'][0][0][3]
-                obs_v_min = state_dict['car2'][0][0][4]  
+                obs_theta_min = state_dict['car2'][0][0][4]
+                obs_v_min = state_dict['car2'][0][0][6]  
                 
                 # Timer variable, no uncertainty
-                ego_time = state_dict['car1'][0][0][5] # update
+                ego_time = state_dict['car1'][0][0][7] # update
                 
                 # upper bound states
                 curr_x_max = state_dict['car1'][0][1][1]
                 curr_y_max = state_dict['car1'][0][1][2]
-                curr_theta_max = state_dict['car1'][0][1][3]
-                curr_v_max = state_dict['car1'][0][1][4]
+                curr_theta_max = state_dict['car1'][0][1][4]
+                curr_v_max = state_dict['car1'][0][1][6]
                 obstacle_x_max = state_dict['car2'][0][1][1]
                 obstacle_y_max = state_dict['car2'][0][1][2]
-                obs_theta_max = state_dict['car2'][0][1][3]
-                obs_v_max = state_dict['car2'][0][1][4]   
+                obs_theta_max = state_dict['car2'][0][1][4]
+                obs_v_max = state_dict['car2'][0][1][6]   
                 
                 curr_vx_max = curr_v_max * np.max([np.cos(curr_theta_max), np.cos(curr_theta_min)])
                 curr_vy_max = curr_v_max * np.max([np.sin(curr_theta_max), np.sin(curr_theta_min)])
