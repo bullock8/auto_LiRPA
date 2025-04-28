@@ -169,7 +169,7 @@ def get_final_states_verify(n) -> Tuple[List]:
 if __name__ == "__main__":
     import os
     script_dir = os.path.realpath(os.path.dirname(__file__))
-    input_code_name = os.path.join(script_dir, "controller_v2.py")
+    input_code_name = os.path.join(script_dir, "controller_v3.py")
     car = CarAgent('car1', file_name=input_code_name)
     car2 = NPCAgent('car2')
     scenario = Scenario(ScenarioConfig(parallel=False))

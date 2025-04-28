@@ -2,6 +2,8 @@ import numpy as np
 from math import floor
 from dubins_agent import NPCAgent, CarAgent
 
+from verse.utils.utils import wrap_to_pi
+
 
 def sets(d, thing, attrs, vals):
     d.update({thing + "." + k: v for k, v in zip(attrs, vals)})
@@ -223,8 +225,47 @@ class DubinSensor():
 
                 psi_max = obs_theta_max - curr_theta_min #np.arctan2(obs_vy, obs_vx) - np.arctan2(curr_vy, curr_vx)
                 psi_min = obs_theta_min - curr_theta_max
-                # Wrap psi_max
-                '''while psi_max < -np.pi:
+                
+                #######
+                # New wrap angles
+                #######
+                arho_min = np.inf # does this make sense
+                arho_max = -np.inf
+                
+                own_ext = [(curr_x_min, curr_y_min), (curr_x_max, curr_y_max), (curr_x_min, curr_y_max), (curr_x_max, curr_y_min)]
+                int_ext = [(obstacle_x_min, obstacle_y_min), (obstacle_x_max, obstacle_y_max), (obstacle_x_min, obstacle_y_max), (obstacle_x_max, obstacle_y_min)]
+                for own_vert in own_ext:
+                    for int_vert in int_ext:
+                        arho = np.arctan2(int_vert[1]-own_vert[1],int_vert[0]-own_vert[0]) % (2*np.pi)
+                        arho_max = max(arho_max, arho)
+                        arho_min = min(arho_min, arho)
+                
+                theta_min = wrap_to_pi((2*np.pi-curr_theta_max)+arho_min)
+                theta_max = wrap_to_pi((2*np.pi-curr_theta_min)+arho_max) 
+                # theta_maxs = []
+                # theta_mins = []
+                if theta_max<theta_min: # bound issue due to wrapping
+                    # theta_mins = [-np.pi, theta_min]
+                    # theta_maxs = [theta_max, np.pi]
+                    cont['ego.theta'] = [-np.pi, theta_min]
+                    cont['ego.theta2'] = [theta_max, np.pi]
+                else:
+                    cont['ego.theta'] = [theta_min, theta_max]
+                    cont['ego.theta2'] = [theta_min, theta_max]
+
+                # Psi wrap
+                psi_max = wrap_to_pi(obs_theta_max - curr_theta_min) #np.arctan2(obs_vy, obs_vx) - np.arctan2(curr_vy, curr_vx)
+                psi_min = wrap_to_pi(obs_theta_min - curr_theta_max)
+                
+                if psi_max<psi_min: # bound issue due to wrapping
+                    # theta_mins = [-np.pi, theta_min]
+                    # theta_maxs = [theta_max, np.pi]
+                    cont['ego.psi'] = [-np.pi, psi_min]
+                    cont['ego.psi2'] = [psi_max, np.pi]
+                else:
+                    cont['ego.psi'] = [psi_min, psi_max]
+                    cont['ego.psi2'] = [psi_min, psi_max]
+                '''while psi_max < -np.pi:      
                     psi_max += 2 * np.pi
 
                 while psi_max > np.pi:
@@ -245,9 +286,9 @@ class DubinSensor():
                     # Second dimension is bound (0 for lower, 1 for upper)
                     # Third dimesnion is state index (same indices as the state_dict)
                 ]
-                cont['ego.theta'] = [
-                    theta_min, theta_max
-                ]
+                #cont['ego.theta'] = [
+                #    theta_min, theta_max
+                #]
                 cont['ego.psi'] = [
                     psi_min, psi_max #state_dict['car'][0][0][3], state_dict['car'][0][1][3]
                 ]
@@ -265,7 +306,7 @@ class DubinSensor():
                 else:
                     transition_flag = 0'''
                 cont['ego.timer_DL'] = [ego_time, ego_time]
-                print(f"sensor ego r: {rho_min}\nsensor ego t:{ego_time}")
+                #print(f"sensor ego r: {rho_min}\nsensor ego t:{ego_time}")
                 
                 disc['ego.agent_mode'] = state_dict['car1'][1][0]
                 #disc['ego.track_mode'] = state_dict['car1'][1][1]

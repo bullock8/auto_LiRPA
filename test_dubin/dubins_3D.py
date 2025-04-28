@@ -41,7 +41,7 @@ def get_acas_state(own_state: List[float], int_state: List[float]) -> torch.Tens
 if __name__ == "__main__":
     import os
     script_dir = os.path.realpath(os.path.dirname(__file__))
-    input_code_name = os.path.join(script_dir, "controller_v2_3D.py")
+    input_code_name = os.path.join(script_dir, "controller_v3_3D.py")
     car = CarAgent('car1', file_name=input_code_name)
     car2 = NPCAgent('car2')
     scenario = Scenario(ScenarioConfig(parallel=False))
@@ -49,11 +49,11 @@ if __name__ == "__main__":
     scenario.config.reachability_method = ReachabilityMethod.DRYVR_DISC
     scenario.set_sensor(DubinSensor())
     car.set_initial(
-                initial_state=[[-1, -1010, -1, np.pi/3, np.pi/6, 100, 0], [1, -990, 1, np.pi/3, np.pi/6, 100, 0]],
+                initial_state=[[-1, -1010, -1, np.pi/3, np.pi/6, 100, 0, 0], [1, -990, 1, np.pi/3, np.pi/6, 100, 0, 0]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     car2.set_initial(
-            initial_state=[[-2001, -10, 999, 0,0, 100, 0], [-1999, 10, 1001, 0,0, 100, 0]],
+            initial_state=[[-2001, -10, 999, 0, 0, 100, 0, 0], [-1999, 10, 1001, 0, 0, 100, 0, 0]],
         initial_mode=(AgentMode.COC, TrackMode.T1)
     )
     scenario.add_agent(car)

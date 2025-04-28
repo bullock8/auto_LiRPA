@@ -31,8 +31,8 @@ class NPCAgent(BaseAgent):
         psi_dot = p
         v_dot = a
         time_dot = 1
-        dots = [x_dot, y_dot, z_dot, theta_dot, psi_dot, v_dot, time_dot]
-        if len(state) == 7:
+        dots = [x_dot, y_dot, z_dot, theta_dot, psi_dot, v_dot, time_dot, time_dot]
+        if len(state) == 8:
             return dots
         return dots + [1]
 
@@ -71,6 +71,7 @@ class NPCAgent(BaseAgent):
             trace[i + 1, 0] = time_step * (i + 1)
             trace[i + 1, 1:] = init
             trace[i + 1, 7] = time_step * (i + 1)
+            trace[i + 1, 8] = time_step * (i + 1)
         return trace
 
 
@@ -102,7 +103,7 @@ class CarAgent(BaseAgent):
         psi_dot = p 
         v_dot = a
         time_dot = 1
-        return [x_dot, y_dot, z_dot, theta_dot, psi_dot, v_dot, time_dot]
+        return [x_dot, y_dot, z_dot, theta_dot, psi_dot, v_dot, time_dot, time_dot]
 
     def action_handler(self, mode: List[str], state, lane_map: LaneMap) -> Tuple[float, float]:
         x, y, z, theta, psi, v = state[0:6]
@@ -163,6 +164,7 @@ class CarAgent(BaseAgent):
             trace[i + 1, 0] = time_step * (i + 1)
             trace[i + 1, 1:] = init
             trace[i + 1, 7] = time_step * (i + 1)
+            trace[i + 1, 8] = time_step * (i + 1)
         return trace
 
 
